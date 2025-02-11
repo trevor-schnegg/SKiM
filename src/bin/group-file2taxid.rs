@@ -1,11 +1,11 @@
 use clap::Parser;
 use indicatif::ParallelProgressIterator;
-use musk::group::connected_components;
-use musk::io::{create_output_file, load_string2taxid};
-use musk::tracing::start_musk_tracing_subscriber;
-use musk::utility::create_bitmap;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
+use skim::group::connected_components;
+use skim::io::{create_output_file, load_string2taxid};
+use skim::tracing::start_skim_tracing_subscriber;
+use skim::utility::create_bitmap;
 use std::collections::HashMap;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -29,9 +29,9 @@ struct Args {
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string())]
     /// Where to write the output
-    /// If a file, extension '.musk.g.f2t' is added
-    /// If a directory, 'musk.g.f2t' will be the file name
-    /// Name means: musk, (g)rouped, (f)ile(2)(t)axid
+    /// If a file, extension '.skim.g.f2t' is added
+    /// If a directory, 'skim.g.f2t' will be the file name
+    /// Name means: skim, (g)rouped, (f)ile(2)(t)axid
     output_location: String,
 
     #[arg()]
@@ -45,7 +45,7 @@ struct Args {
 
 fn main() {
     // Initialize the tracing subscriber to handle debug, info, warn, and error macro calls
-    start_musk_tracing_subscriber();
+    start_skim_tracing_subscriber();
 
     // Parse arguments from the command line
     let args = Args::parse();
@@ -57,7 +57,7 @@ fn main() {
     info!("using minimum similarity: {}", args.minimum_similarity);
 
     // Create the output file
-    let mut output_file = BufWriter::new(create_output_file(output_loc_path, "musk.g.f2t"));
+    let mut output_file = BufWriter::new(create_output_file(output_loc_path, "skim.g.f2t"));
 
     info!("loading file2taxid at {} as taxid2files", args.file2taxid);
     let mut taxid2files = HashMap::new();

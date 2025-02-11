@@ -1,8 +1,8 @@
 use bio::io::{fasta, fastq};
 use clap::Parser;
-use musk::io::create_output_file;
-use musk::tracing::start_musk_tracing_subscriber;
-use musk::utility::{get_fasta_iter_of_file, get_fastq_iter_of_file};
+use skim::io::create_output_file;
+use skim::tracing::start_skim_tracing_subscriber;
+use skim::utility::{get_fasta_iter_of_file, get_fastq_iter_of_file};
 use std::path::Path;
 use tracing::info;
 
@@ -32,7 +32,7 @@ struct Args {
 
 fn main() {
     // Initialize the tracing subscriber to handle debug, info, warn, and error macro calls
-    start_musk_tracing_subscriber();
+    start_skim_tracing_subscriber();
 
     // Parse arguments from the command line
     let args = Args::parse();

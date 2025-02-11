@@ -1,12 +1,12 @@
 use clap::Parser;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
-use musk::consts::CANONICAL;
-use musk::io::{create_output_file, dump_data_to_file, load_string2taxid};
-use musk::tracing::start_musk_tracing_subscriber;
-use musk::utility::create_bitmap;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
+use skim::consts::CANONICAL;
+use skim::io::{create_output_file, dump_data_to_file, load_string2taxid};
+use skim::tracing::start_skim_tracing_subscriber;
+use skim::utility::create_bitmap;
 use std::path::Path;
 use tracing::info;
 
@@ -21,8 +21,8 @@ struct Args {
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string(), verbatim_doc_comment)]
     /// Where to write the pairwise distance (.pd) file.
-    /// If a file is provided, the extention '.musk.pd' is added.
-    /// If a directory is provided, 'musk.pd' will be the file name.
+    /// If a file is provided, the extention '.skim.pd' is added.
+    /// If a directory is provided, 'skim.pd' will be the file name.
     output_location: String,
 
     #[arg()]
@@ -36,7 +36,7 @@ struct Args {
 
 fn main() {
     // Initialize the tracing subscriber to handle debug, info, warn, and error macro calls
-    start_musk_tracing_subscriber();
+    start_skim_tracing_subscriber();
 
     // Parse arguments from the command line
     let args = Args::parse();
@@ -46,7 +46,7 @@ fn main() {
     let ref_dir_path = Path::new(&args.reference_directory);
 
     // Create the output file so it errors if an incorrect output file is provided before computation
-    let output_file = create_output_file(output_loc_path, "musk.pd");
+    let output_file = create_output_file(output_loc_path, "skim.pd");
 
     info!("loading file2taxid at {}", args.file2taxid);
     let file2taxid = load_string2taxid(file2taxid_path);

@@ -1,17 +1,17 @@
 use clap::Parser;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
-use musk::consts::CANONICAL;
-use musk::database::Database;
-use musk::io::{create_output_file, dump_data_to_file, load_string2taxid};
-use musk::tracing::start_musk_tracing_subscriber;
-use musk::utility::create_bitmap;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
+use skim::consts::CANONICAL;
+use skim::database::Database;
+use skim::io::{create_output_file, dump_data_to_file, load_string2taxid};
+use skim::tracing::start_skim_tracing_subscriber;
+use skim::utility::create_bitmap;
 use std::path::Path;
 use tracing::info;
 
-/// Creates a musk database (.db) file from a file2taxid (.f2t) file.
+/// Creates a skim database (.db) file from a file2taxid (.f2t) file.
 /// For significant database size improvement, the file2taxid should be ordered (.o.f2t).
 #[derive(Parser)]
 #[clap(version, about)]
@@ -23,8 +23,8 @@ struct Args {
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string(), verbatim_doc_comment)]
     /// Where to write the database (.db) file.
-    /// If a file is provided, the extension '.musk.db' is added.
-    /// If a directory is provided, 'musk.db' will be the file name.
+    /// If a file is provided, the extension '.skim.db' is added.
+    /// If a directory is provided, 'skim.db' will be the file name.
     output_location: String,
 
     #[arg()]
@@ -38,7 +38,7 @@ struct Args {
 
 fn main() {
     // Initialize the tracing subscriber to handle debug, info, warn, and error macro calls
-    start_musk_tracing_subscriber();
+    start_skim_tracing_subscriber();
 
     // Parse arguments from the command line
     let args = Args::parse();
@@ -48,7 +48,7 @@ fn main() {
     let ref_dir_path = Path::new(&args.reference_directory);
 
     // Create the output file so it errors if an incorrect output file is provided before computation
-    let output_file = create_output_file(output_loc_path, "musk.db");
+    let output_file = create_output_file(output_loc_path, "skim.db");
 
     // Load the file2taxid ordering
     info!("loading file2taxid at {}", args.file2taxid);

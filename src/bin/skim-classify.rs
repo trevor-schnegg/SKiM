@@ -1,10 +1,10 @@
 use clap::Parser;
-use musk::big_exp_float::BigExpFloat;
-use musk::database::Database;
-use musk::io::{create_output_file, load_data_from_file};
-use musk::tracing::start_musk_tracing_subscriber;
-use musk::utility::get_fastq_iter_of_file;
 use rayon::prelude::*;
+use skim::big_exp_float::BigExpFloat;
+use skim::database::Database;
+use skim::io::{create_output_file, load_data_from_file};
+use skim::tracing::start_skim_tracing_subscriber;
+use skim::utility::get_fastq_iter_of_file;
 use std::io::{BufWriter, Write};
 use std::ops::Neg;
 use std::path::Path;
@@ -12,7 +12,7 @@ use std::sync::Mutex;
 use std::time::Instant;
 use tracing::{debug, info, warn};
 
-/// Classifies the input reads using a musk database (.db/.cdb) file.
+/// Classifies the input reads using a skim database (.db/.cdb) file.
 /// Output is a readid2file (.r2f) mapping, including the taxid for the file if it was provided during database construction.
 #[derive(Parser)]
 #[clap(version, about)]
@@ -29,8 +29,8 @@ struct Args {
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string(), verbatim_doc_comment)]
     /// Where to write the readid2file (.r2f) file.
-    /// If a file is provided, the extension '.musk.r2f' is added.
-    /// If a directory is provided, 'musk.r2f' will be the file name.
+    /// If a file is provided, the extension '.skim.r2f' is added.
+    /// If a directory is provided, 'skim.r2f' will be the file name.
     output_location: String,
 
     #[arg()]
@@ -44,7 +44,7 @@ struct Args {
 
 fn main() {
     // Initialize the tracing subscriber to handle debug, info, warn, and error macro calls
-    start_musk_tracing_subscriber();
+    start_skim_tracing_subscriber();
 
     // Parse arguments from the command line
     let args = Args::parse();
@@ -54,7 +54,7 @@ fn main() {
     let reads_path = Path::new(&args.reads);
 
     // Create the output file so it errors if an incorrect output file is provided before computation
-    let output_file = create_output_file(output_loc_path, "musk.r2f");
+    let output_file = create_output_file(output_loc_path, "skim.r2f");
 
     // Create a mutex over a writer to allow multiple threads to write to the output file
     let output_writer = Mutex::new(BufWriter::new(output_file));

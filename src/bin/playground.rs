@@ -1,17 +1,17 @@
 use std::time::Instant;
 
 use itertools::Itertools;
-use musk::{
-    big_exp_float::BigExpFloat, binomial_sf::sf, consts::BinomialConsts,
-    tracing::start_musk_tracing_subscriber,
-};
 use num_traits::Zero;
 use rand::distr::{Distribution, Uniform};
+use skim::{
+    big_exp_float::BigExpFloat, binomial_sf::sf, consts::BinomialConsts,
+    tracing::start_skim_tracing_subscriber,
+};
 use statrs::distribution::{Binomial, DiscreteCDF};
 use tracing::debug;
 
 fn main() {
-    start_musk_tracing_subscriber();
+    start_skim_tracing_subscriber();
 
     // debug!("This should be captured only by stdout");
     // info!("This should be captured only by stdout");

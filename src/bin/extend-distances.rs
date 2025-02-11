@@ -1,11 +1,11 @@
 use clap::Parser;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
-use musk::io::{create_output_file, dump_data_to_file, load_data_from_file, load_string2taxid};
-use musk::tracing::start_musk_tracing_subscriber;
-use musk::utility::create_bitmap;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
+use skim::io::{create_output_file, dump_data_to_file, load_data_from_file, load_string2taxid};
+use skim::tracing::start_skim_tracing_subscriber;
+use skim::utility::create_bitmap;
 use std::path::Path;
 use tracing::info;
 
@@ -22,9 +22,9 @@ struct Args {
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string())]
     /// Where to write the output
-    /// If a file, '.musk.pd' is added
-    /// If a directory, 'musk.pd' will be the file name
-    /// Name means: musk, (p)airwise (d)istances
+    /// If a file, '.skim.pd' is added
+    /// If a directory, 'skim.pd' will be the file name
+    /// Name means: skim, (p)airwise (d)istances
     output_location: String,
 
     #[arg()]
@@ -46,7 +46,7 @@ struct Args {
 
 fn main() {
     // Initialize the tracing subscriber to handle debug, info, warn, and error macro calls
-    start_musk_tracing_subscriber();
+    start_skim_tracing_subscriber();
 
     // Parse arguments from the command line
     let args = Args::parse();
@@ -58,7 +58,7 @@ fn main() {
     let output_loc_path = Path::new(&args.output_location);
 
     // Create the output file
-    let output_file = create_output_file(output_loc_path, "musk.pd");
+    let output_file = create_output_file(output_loc_path, "skim.pd");
 
     info!("loading pairwise distances at {}", args.distances);
     let (old_distances, old_file2taxid) =

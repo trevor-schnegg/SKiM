@@ -2,7 +2,7 @@ use std::io;
 use tracing::Level;
 use tracing_subscriber::{filter, fmt, prelude::*, EnvFilter};
 
-pub fn start_musk_tracing_subscriber() -> () {
+pub fn start_skim_tracing_subscriber() -> () {
     // Create a layer that logs to stdout
     let stdout_log = fmt::layer();
 

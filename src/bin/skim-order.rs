@@ -1,8 +1,8 @@
 use clap::Parser;
-use musk::{
+use skim::{
     io::{create_output_file, load_data_from_file},
     order::{greedy_ordering, ordering_statistics},
-    tracing::start_musk_tracing_subscriber,
+    tracing::start_skim_tracing_subscriber,
 };
 use std::{
     io::{BufWriter, Write},
@@ -18,8 +18,8 @@ use tracing::{debug, info};
 struct Args {
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string(), verbatim_doc_comment)]
     /// Where to write the ordered file2taxid (.o.f2t) file.
-    /// If a file is provided, the extention '.musk.o.f2t' is added.
-    /// If a directory is provided, 'musk.o.f2t' will be the file name.
+    /// If a file is provided, the extention '.skim.o.f2t' is added.
+    /// If a directory is provided, 'skim.o.f2t' will be the file name.
     output_location: String,
 
     #[arg(short, long, default_value_t = 0)]
@@ -33,7 +33,7 @@ struct Args {
 
 fn main() {
     // Initialize the tracing subscriber to handle debug, info, warn, and error macro calls
-    start_musk_tracing_subscriber();
+    start_skim_tracing_subscriber();
 
     // Parse arguments from the command line
     let args = Args::parse();
@@ -41,7 +41,7 @@ fn main() {
     let output_loc_path = Path::new(&args.output_location);
 
     // Create the output file so it errors if an incorrect output file is provided before computation
-    let mut output_writer = BufWriter::new(create_output_file(output_loc_path, "musk.o.f2t"));
+    let mut output_writer = BufWriter::new(create_output_file(output_loc_path, "skim.o.f2t"));
 
     info!("loading distances at {}", args.distances);
     let (distances, file2taxid) =

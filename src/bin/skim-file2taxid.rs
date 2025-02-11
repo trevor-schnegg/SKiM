@@ -1,9 +1,9 @@
 use clap::Parser;
 use indicatif::ParallelProgressIterator;
-use musk::io::{create_output_file, load_string2taxid};
-use musk::tracing::start_musk_tracing_subscriber;
-use musk::utility::{get_fasta_files, get_fasta_iter_of_file};
 use rayon::prelude::*;
+use skim::io::{create_output_file, load_string2taxid};
+use skim::tracing::start_skim_tracing_subscriber;
+use skim::utility::{get_fasta_files, get_fasta_iter_of_file};
 use std::collections::HashMap;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -21,8 +21,8 @@ struct Args {
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string(), verbatim_doc_comment)]
     /// Where to write the file2taxid (.f2t) file.
-    /// If a file is provided, the extention '.musk.f2t' is added.
-    /// If a directory is provided, 'musk.f2t' will be the file name.
+    /// If a file is provided, the extention '.skim.f2t' is added.
+    /// If a directory is provided, 'skim.f2t' will be the file name.
     output_location: String,
 
     #[arg()]
@@ -32,7 +32,7 @@ struct Args {
 
 fn main() {
     // Initialize the tracing subscriber to handle debug, info, warn, and error macro calls
-    start_musk_tracing_subscriber();
+    start_skim_tracing_subscriber();
 
     // Parse arguments from the command line
     let args = Args::parse();
@@ -40,7 +40,7 @@ fn main() {
     let reference_dir_path = Path::new(&args.reference_directory);
 
     // Create the output file so it errors if an incorrect output file is provided before computation
-    let mut output_writer = BufWriter::new(create_output_file(output_loc_path, "musk.f2t"));
+    let mut output_writer = BufWriter::new(create_output_file(output_loc_path, "skim.f2t"));
 
     // Get the accession2taxid, if one was provided
     let accession2taxid: Option<HashMap<String, usize>> = match args.accession2taxid {

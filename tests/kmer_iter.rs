@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use musk::kmer_iter::KmerIter;
+use skim::kmer_iter::KmerIter;
 
 #[test]
 fn non_canonical() {
