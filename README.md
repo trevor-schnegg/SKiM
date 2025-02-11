@@ -1,2 +1,2 @@
 # SKiM
-DNA reads classifier based on probability
+Short K-mers in Metagenomics
