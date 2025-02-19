@@ -22,7 +22,7 @@ fn non_canonical() {
 
     assert_eq!(
         sequence_kmers,
-        KmerIter::from(sequence.as_bytes(), 14, false).collect_vec()
+        KmerIter::from(sequence.as_bytes(), 14, false, 14).collect_vec()
     );
 }
 
@@ -47,6 +47,6 @@ fn canonical() {
 
     assert_eq!(
         sequence_kmers,
-        KmerIter::from(sequence.as_bytes(), 14, true).collect_vec()
+        KmerIter::from(sequence.as_bytes(), 14, true, 14).collect_vec()
     );
 }

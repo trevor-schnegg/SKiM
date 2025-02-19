@@ -20,6 +20,10 @@ struct Args {
     /// Length of k-mer to use in the database
     kmer_length: usize,
 
+    #[arg(short, long, default_value_t = 14)]
+    /// Length of minimizer to use in the database
+    minimizer_length: usize,
+
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string())]
     /// Where to write the output
     /// If a file, '.skim.pd' is added
@@ -53,6 +57,7 @@ fn main() {
     let distances_path = Path::new(&args.distances);
     let new_file2taxid_path = Path::new(&args.new_file2taxid);
     let kmer_len = args.kmer_length;
+    let minimizer_len = args.minimizer_length;
     let new_ref_dir_path = Path::new(&args.new_reference_directory);
     let old_ref_dir_path = Path::new(&args.old_reference_directory);
     let output_loc_path = Path::new(&args.output_location);
@@ -79,7 +84,7 @@ fn main() {
                 .map(|file| old_ref_dir_path.join(file))
                 .collect_vec();
 
-            create_bitmap(file_paths, kmer_len, CANONICAL)
+            create_bitmap(file_paths, kmer_len, CANONICAL, minimizer_len)
         })
         .collect::<Vec<RoaringBitmap>>();
 
@@ -96,7 +101,7 @@ fn main() {
                 .map(|file| new_ref_dir_path.join(file))
                 .collect_vec();
 
-            create_bitmap(file_paths, kmer_len, CANONICAL)
+            create_bitmap(file_paths, kmer_len, CANONICAL, minimizer_len)
         })
         .collect::<Vec<RoaringBitmap>>();
 

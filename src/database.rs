@@ -25,6 +25,7 @@ pub struct Database {
     tax_ids: Box<[usize]>,
     kmer_len: usize,
     kmer_to_rle_index: HashMap<u32, u32>,
+    minimizer_len: usize,
     p_values: Box<[f64]>,
 }
 
@@ -39,6 +40,7 @@ impl Database {
         files: Vec<String>,
         tax_ids: Vec<usize>,
         kmer_len: usize,
+        minimizer_len: usize,
     ) -> Self {
         let total_canonical_kmers =
             (4_usize.pow(kmer_len as u32) - 4_usize.pow(kmer_len.div_ceil(2) as u32)) / 2;
@@ -123,6 +125,7 @@ impl Database {
             tax_ids: tax_ids.into_boxed_slice(),
             kmer_len,
             kmer_to_rle_index,
+            minimizer_len,
             p_values,
         }
     }
@@ -400,7 +403,9 @@ impl Database {
 
         let hit_lookup_start = Instant::now();
         // For each kmer in the read
-        for kmer in KmerIter::from(read, self.kmer_len, self.canonical).map(|k| k as u32) {
+        for kmer in KmerIter::from(read, self.kmer_len, self.canonical, self.minimizer_len)
+            .map(|k| k as u32)
+        {
             // Lookup the RLE and decompress
             if let Some(rle_index) = self.kmer_to_rle_index.get(&kmer) {
                 self.rles[*rle_index as usize].block_iters().for_each(

@@ -20,25 +20,35 @@ fn base2int(base: u8) -> Option<usize> {
 pub struct KmerIter<'a> {
     canonical: bool,
     char_iter: Iter<'a, u8>,
-    clear_bits: usize,
     curr_kmer: usize,
     curr_rev_comp_kmer: usize,
     first_letter_shift: usize,
     initialized: bool,
+    kmer_filter_bits: usize,
     kmer_length: usize,
+    minimizer_filter_bits: usize,
+    minimizers_per_kmer: usize,
 }
 
 impl<'a> KmerIter<'a> {
-    pub fn from(sequence: &'a [u8], kmer_length: usize, canonical: bool) -> Self {
+    pub fn from(
+        sequence: &'a [u8],
+        kmer_length: usize,
+        canonical: bool,
+        minimizer_length: usize,
+    ) -> Self {
+        assert!(minimizer_length <= kmer_length);
         KmerIter {
             canonical,
             char_iter: sequence.iter(),
-            clear_bits: 2_usize.pow((kmer_length * 2) as u32) - 1,
             curr_kmer: 0,
             curr_rev_comp_kmer: 0,
             first_letter_shift: (kmer_length - 1) * 2,
             initialized: false,
+            kmer_filter_bits: 2_usize.pow((kmer_length * 2) as u32) - 1,
             kmer_length,
+            minimizer_filter_bits: 2_usize.pow((minimizer_length * 2) as u32) - 1,
+            minimizers_per_kmer: kmer_length - minimizer_length + 1,
         }
     }
 
@@ -48,6 +58,7 @@ impl<'a> KmerIter<'a> {
         while position < self.kmer_length {
             match self.char_iter.next() {
                 None => {
+                    // Reached the end of the sequence without a full k-mer
                     return None;
                 }
                 Some(char) => {
@@ -68,17 +79,29 @@ impl<'a> KmerIter<'a> {
         }
         self.curr_kmer = buffer;
         self.curr_rev_comp_kmer = self.reverse_compliment(buffer);
-        if self.canonical {
-            Some(min(self.curr_kmer, self.curr_rev_comp_kmer))
+
+        let return_kmer = if self.canonical {
+            min(self.curr_kmer, self.curr_rev_comp_kmer)
         } else {
-            Some(self.curr_kmer)
+            self.curr_kmer
+        };
+
+        if self.minimizers_per_kmer == 1 {
+            Some(return_kmer)
+        } else {
+            Some(
+                (0..self.minimizers_per_kmer)
+                    .map(|i| (return_kmer >> (i << 1)) & self.minimizer_filter_bits)
+                    .min()
+                    .unwrap(),
+            )
         }
     }
 
     /// Only call this if I already have an actual k-mer
     fn reverse_compliment(&self, kmer: usize) -> usize {
         let mut buffer = 0;
-        let mut complement_kmer = (!kmer) & self.clear_bits;
+        let mut complement_kmer = (!kmer) & self.kmer_filter_bits;
         for _ in 0..self.kmer_length {
             // Pop the right-most letter
             let letter = complement_kmer & 3;
@@ -105,6 +128,7 @@ impl<'a> Iterator for KmerIter<'a> {
         } else {
             match self.char_iter.next() {
                 None => {
+                    // End of sequence
                     return None;
                 }
                 Some(char) => {
@@ -112,16 +136,29 @@ impl<'a> Iterator for KmerIter<'a> {
                         Some(bit_representation) => {
                             self.curr_kmer <<= 2;
                             self.curr_kmer |= bit_representation;
-                            self.curr_kmer &= self.clear_bits;
+                            self.curr_kmer &= self.kmer_filter_bits;
 
                             self.curr_rev_comp_kmer >>= 2;
                             self.curr_rev_comp_kmer |=
                                 COMPLEMENT[bit_representation] << self.first_letter_shift;
 
-                            if self.canonical {
-                                Some(min(self.curr_kmer, self.curr_rev_comp_kmer))
+                            let return_kmer = if self.canonical {
+                                min(self.curr_kmer, self.curr_rev_comp_kmer)
                             } else {
-                                Some(self.curr_kmer)
+                                self.curr_kmer
+                            };
+
+                            if self.minimizers_per_kmer == 1 {
+                                Some(return_kmer)
+                            } else {
+                                Some(
+                                    (0..self.minimizers_per_kmer)
+                                        .map(|i| {
+                                            (return_kmer >> (i << 1)) & self.minimizer_filter_bits
+                                        })
+                                        .min()
+                                        .unwrap(),
+                                )
                             }
                         }
                         None => {
