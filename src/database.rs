@@ -482,8 +482,6 @@ impl Database {
         }
         let prob_calc_time = prob_calc_start.elapsed().as_secs_f64();
 
-        debug!("lowest prob {:?}", lowest_prob);
-
         if lowest_prob < cutoff_threshold {
             (
                 Some((
