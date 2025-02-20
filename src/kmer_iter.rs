@@ -26,6 +26,7 @@ pub struct KmerIter<'a> {
     initialized: bool,
     kmer_filter_bits: usize,
     kmer_length: usize,
+    last_returned: Option<usize>,
     minimizer_filter_bits: usize,
     minimizers_per_kmer: usize,
 }
@@ -47,6 +48,7 @@ impl<'a> KmerIter<'a> {
             initialized: false,
             kmer_filter_bits: 2_usize.pow((kmer_length * 2) as u32) - 1,
             kmer_length,
+            last_returned: None,
             minimizer_filter_bits: 2_usize.pow((minimizer_length * 2) as u32) - 1,
             minimizers_per_kmer: kmer_length - minimizer_length + 1,
         }
@@ -86,16 +88,63 @@ impl<'a> KmerIter<'a> {
             self.curr_kmer
         };
 
-        if self.minimizers_per_kmer == 1 {
-            Some(return_kmer)
+        let return_minimizer = if self.minimizers_per_kmer == 1 {
+            return_kmer
         } else {
-            Some(
-                (0..self.minimizers_per_kmer)
-                    .map(|i| (return_kmer >> (i << 1)) & self.minimizer_filter_bits)
-                    .min()
-                    .unwrap(),
-            )
+            (0..self.minimizers_per_kmer)
+                .map(|i| (return_kmer >> (i << 1)) & self.minimizer_filter_bits)
+                .min()
+                .unwrap()
+        };
+
+        self.last_returned = Some(return_minimizer);
+        Some(return_minimizer)
+    }
+
+    fn find_next_minimizer(&mut self) -> Option<usize> {
+        while let Some(char) = self.char_iter.next() {
+            match base2int(*char) {
+                Some(bit_representation) => {
+                    // Update the current k-mer
+                    self.curr_kmer <<= 2;
+                    self.curr_kmer |= bit_representation;
+                    self.curr_kmer &= self.kmer_filter_bits;
+
+                    // Update the current reverse compliment k-mer
+                    self.curr_rev_comp_kmer >>= 2;
+                    self.curr_rev_comp_kmer |=
+                        COMPLEMENT[bit_representation] << self.first_letter_shift;
+
+                    let return_kmer = if self.canonical {
+                        min(self.curr_kmer, self.curr_rev_comp_kmer)
+                    } else {
+                        self.curr_kmer
+                    };
+
+                    let return_minimizer = if self.minimizers_per_kmer == 1 {
+                        return_kmer
+                    } else {
+                        (0..self.minimizers_per_kmer)
+                            .map(|i| (return_kmer >> (i << 1)) & self.minimizer_filter_bits)
+                            .min()
+                            .expect("impossible case")
+                    };
+
+                    // If this is a new minimizer, return it
+                    // Otherwise, the loop will continue
+                    if self.last_returned.expect("impossible case") != return_minimizer {
+                        self.last_returned = Some(return_minimizer);
+                        return Some(return_minimizer);
+                    }
+                }
+                None => {
+                    // Encountered a character that isn't A (a), C (c), G (g), or T (t)
+                    return self.find_next_kmer();
+                }
+            }
         }
+        // If we exit the while loop we have no next minimizer
+        None
     }
 
     /// Only call this if I already have an actual k-mer
@@ -126,48 +175,7 @@ impl<'a> Iterator for KmerIter<'a> {
             self.initialized = true;
             self.find_next_kmer()
         } else {
-            match self.char_iter.next() {
-                None => {
-                    // End of sequence
-                    return None;
-                }
-                Some(char) => {
-                    match base2int(*char) {
-                        Some(bit_representation) => {
-                            self.curr_kmer <<= 2;
-                            self.curr_kmer |= bit_representation;
-                            self.curr_kmer &= self.kmer_filter_bits;
-
-                            self.curr_rev_comp_kmer >>= 2;
-                            self.curr_rev_comp_kmer |=
-                                COMPLEMENT[bit_representation] << self.first_letter_shift;
-
-                            let return_kmer = if self.canonical {
-                                min(self.curr_kmer, self.curr_rev_comp_kmer)
-                            } else {
-                                self.curr_kmer
-                            };
-
-                            if self.minimizers_per_kmer == 1 {
-                                Some(return_kmer)
-                            } else {
-                                Some(
-                                    (0..self.minimizers_per_kmer)
-                                        .map(|i| {
-                                            (return_kmer >> (i << 1)) & self.minimizer_filter_bits
-                                        })
-                                        .min()
-                                        .unwrap(),
-                                )
-                            }
-                        }
-                        None => {
-                            // Encountered a character that isn't A (a), C (c), G (g), or T (t)
-                            self.find_next_kmer()
-                        }
-                    }
-                }
-            }
+            self.find_next_minimizer()
         }
     }
 }
