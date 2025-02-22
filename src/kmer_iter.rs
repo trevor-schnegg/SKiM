@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::cmp::min;
 use std::slice::Iter;
 
@@ -22,13 +23,14 @@ pub struct KmerIter<'a> {
     char_iter: Iter<'a, u8>,
     curr_kmer: usize,
     curr_rev_comp_kmer: usize,
-    first_letter_shift: usize,
+    first_letter_offset: usize,
     initialized: bool,
     kmer_filter_bits: usize,
     kmer_length: usize,
+    kmer_syncmer_diff: usize,
     last_returned: Option<usize>,
-    minimizer_filter_bits: usize,
-    minimizers_per_kmer: usize,
+    syncmer_filter_bits: usize,
+    syncmer_offset: usize,
 }
 
 impl<'a> KmerIter<'a> {
@@ -36,25 +38,28 @@ impl<'a> KmerIter<'a> {
         sequence: &'a [u8],
         kmer_length: usize,
         canonical: bool,
-        minimizer_length: usize,
+        syncmer_length: usize,
+        syncmer_offset: usize,
     ) -> Self {
-        assert!(minimizer_length <= kmer_length);
+        assert!(syncmer_length <= kmer_length);
+        assert!(syncmer_offset <= kmer_length - syncmer_length);
         KmerIter {
             canonical,
             char_iter: sequence.iter(),
             curr_kmer: 0,
             curr_rev_comp_kmer: 0,
-            first_letter_shift: (kmer_length - 1) * 2,
+            first_letter_offset: (kmer_length - 1) * 2,
             initialized: false,
             kmer_filter_bits: 2_usize.pow((kmer_length * 2) as u32) - 1,
             kmer_length,
+            kmer_syncmer_diff: kmer_length - syncmer_length,
             last_returned: None,
-            minimizer_filter_bits: 2_usize.pow((minimizer_length * 2) as u32) - 1,
-            minimizers_per_kmer: kmer_length - minimizer_length + 1,
+            syncmer_filter_bits: 2_usize.pow((syncmer_length * 2) as u32) - 1,
+            syncmer_offset,
         }
     }
 
-    fn find_next_kmer(&mut self) -> Option<usize> {
+    fn init_next_kmer(&mut self) -> Option<usize> {
         let mut buffer = 0;
         let mut position = 0_usize;
         while position < self.kmer_length {
@@ -79,29 +84,44 @@ impl<'a> KmerIter<'a> {
                 }
             }
         }
+        // Update the current k-mer and reverse compliment k-mer appropriately
         self.curr_kmer = buffer;
         self.curr_rev_comp_kmer = self.reverse_compliment(buffer);
 
-        let return_kmer = if self.canonical {
-            min(self.curr_kmer, self.curr_rev_comp_kmer)
-        } else {
-            self.curr_kmer
-        };
+        // Decide if I need to return this k-mer
+        if self.curr_is_syncmer() {
+            // Get the correct k-mer
+            let return_kmer = if self.canonical {
+                min(self.curr_kmer, self.curr_rev_comp_kmer)
+            } else {
+                self.curr_kmer
+            };
 
-        let return_minimizer = if self.minimizers_per_kmer == 1 {
-            return_kmer
+            // Check if this k-mer is the same as the one I last returned
+            match self.last_returned {
+                Some(last_returned_kmer) => {
+                    if return_kmer == last_returned_kmer {
+                        // If it isn't different, then find the next syncmer that is
+                        self.find_next_syncmer()
+                    } else {
+                        // If it is different, then return it
+                        self.last_returned = Some(return_kmer);
+                        Some(return_kmer)
+                    }
+                }
+                None => {
+                    // If no last k-mer was returned, return this syncmer
+                    self.last_returned = Some(return_kmer);
+                    Some(return_kmer)
+                }
+            }
         } else {
-            (0..self.minimizers_per_kmer)
-                .map(|i| (return_kmer >> (i << 1)) & self.minimizer_filter_bits)
-                .min()
-                .unwrap()
-        };
-
-        self.last_returned = Some(return_minimizer);
-        Some(return_minimizer)
+            // If the current isn't a syncmer, then find the next one
+            self.find_next_syncmer()
+        }
     }
 
-    fn find_next_minimizer(&mut self) -> Option<usize> {
+    fn find_next_syncmer(&mut self) -> Option<usize> {
         while let Some(char) = self.char_iter.next() {
             match base2int(*char) {
                 Some(bit_representation) => {
@@ -113,37 +133,47 @@ impl<'a> KmerIter<'a> {
                     // Update the current reverse compliment k-mer
                     self.curr_rev_comp_kmer >>= 2;
                     self.curr_rev_comp_kmer |=
-                        COMPLEMENT[bit_representation] << self.first_letter_shift;
+                        COMPLEMENT[bit_representation] << self.first_letter_offset;
 
-                    let return_kmer = if self.canonical {
-                        min(self.curr_kmer, self.curr_rev_comp_kmer)
+                    // Decide if I need to return this k-mer
+                    if self.curr_is_syncmer() {
+                        // Get the correct k-mer
+                        let return_kmer = if self.canonical {
+                            min(self.curr_kmer, self.curr_rev_comp_kmer)
+                        } else {
+                            self.curr_kmer
+                        };
+
+                        // Check if this k-mer is the same as the one I last returned
+                        match self.last_returned {
+                            Some(last_returned_kmer) => {
+                                if return_kmer == last_returned_kmer {
+                                    // If it isn't different, then find the next syncmer that is
+                                    continue;
+                                } else {
+                                    // If it is different, then return it
+                                    self.last_returned = Some(return_kmer);
+                                    return Some(return_kmer);
+                                }
+                            }
+                            None => {
+                                // If no last k-mer was returned, return this syncmer
+                                self.last_returned = Some(return_kmer);
+                                return Some(return_kmer);
+                            }
+                        }
                     } else {
-                        self.curr_kmer
-                    };
-
-                    let return_minimizer = if self.minimizers_per_kmer == 1 {
-                        return_kmer
-                    } else {
-                        (0..self.minimizers_per_kmer)
-                            .map(|i| (return_kmer >> (i << 1)) & self.minimizer_filter_bits)
-                            .min()
-                            .expect("impossible case")
-                    };
-
-                    // If this is a new minimizer, return it
-                    // Otherwise, the loop will continue
-                    if self.last_returned.expect("impossible case") != return_minimizer {
-                        self.last_returned = Some(return_minimizer);
-                        return Some(return_minimizer);
+                        // If the current isn't a syncmer, then find the next one
+                        continue;
                     }
                 }
                 None => {
                     // Encountered a character that isn't A (a), C (c), G (g), or T (t)
-                    return self.find_next_kmer();
+                    return self.init_next_kmer();
                 }
             }
         }
-        // If we exit the while loop we have no next minimizer
+        // If we exit the while loop we have no next syncmer
         None
     }
 
@@ -162,6 +192,29 @@ impl<'a> KmerIter<'a> {
         buffer
     }
 
+    fn curr_is_syncmer(&self) -> bool {
+        if self.kmer_syncmer_diff == 0 {
+            true
+        } else {
+            let kmer = if self.canonical {
+                min(self.curr_kmer, self.curr_rev_comp_kmer)
+            } else {
+                self.curr_kmer
+            };
+
+            let minimum_index = (0..=self.kmer_syncmer_diff)
+                .map(|i| (kmer >> ((self.kmer_syncmer_diff - i) << 1)) & self.syncmer_filter_bits)
+                .position_min()
+                .expect("impossible case");
+
+            if minimum_index == self.syncmer_offset {
+                true
+            } else {
+                false
+            }
+        }
+    }
+
     pub fn get_curr_kmers(&self) -> (usize, usize) {
         (self.curr_kmer, self.curr_rev_comp_kmer)
     }
@@ -173,9 +226,9 @@ impl<'a> Iterator for KmerIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if !self.initialized {
             self.initialized = true;
-            self.find_next_kmer()
+            self.init_next_kmer()
         } else {
-            self.find_next_minimizer()
+            self.find_next_syncmer()
         }
     }
 }

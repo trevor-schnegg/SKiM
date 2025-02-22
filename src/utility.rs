@@ -68,7 +68,8 @@ pub fn create_bitmap(
     files: Vec<PathBuf>,
     kmer_len: usize,
     canonical: bool,
-    minimizer_len: usize,
+    syncmer_len: usize,
+    syncmer_offset: usize,
 ) -> RoaringBitmap {
     let mut bitmap = RoaringBitmap::new();
     for file in files {
@@ -77,7 +78,13 @@ pub fn create_bitmap(
             if record.seq().len() < kmer_len {
                 continue;
             }
-            for kmer in KmerIter::from(record.seq(), kmer_len, canonical, minimizer_len) {
+            for kmer in KmerIter::from(
+                record.seq(),
+                kmer_len,
+                canonical,
+                syncmer_len,
+                syncmer_offset,
+            ) {
                 bitmap.insert(kmer as u32);
             }
         }

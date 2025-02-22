@@ -20,16 +20,20 @@ struct Args {
     /// Length of k-mer to use in the database
     kmer_length: usize,
 
-    #[arg(short, long, default_value_t = 14)]
-    /// Length of minimizer to use in the database
-    minimizer_length: usize,
-
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string())]
     /// Where to write the output
     /// If a file, '.skim.pd' is added
     /// If a directory, 'skim.pd' will be the file name
     /// Name means: skim, (p)airwise (d)istances
     output_location: String,
+
+    #[arg(short, long, default_value_t = 12)]
+    /// Length of syncmer to use in the database
+    syncmer_length: usize,
+
+    #[arg(long, default_value_t = 0)]
+    /// Offset of syncmer to use in the database
+    syncmer_offset: usize,
 
     #[arg()]
     /// The original pairwise distances file
@@ -57,7 +61,8 @@ fn main() {
     let distances_path = Path::new(&args.distances);
     let new_file2taxid_path = Path::new(&args.new_file2taxid);
     let kmer_len = args.kmer_length;
-    let minimizer_len = args.minimizer_length;
+    let syncmer_len = args.syncmer_length;
+    let syncmer_offset = args.syncmer_offset;
     let new_ref_dir_path = Path::new(&args.new_reference_directory);
     let old_ref_dir_path = Path::new(&args.old_reference_directory);
     let output_loc_path = Path::new(&args.output_location);
@@ -84,7 +89,7 @@ fn main() {
                 .map(|file| old_ref_dir_path.join(file))
                 .collect_vec();
 
-            create_bitmap(file_paths, kmer_len, CANONICAL, minimizer_len)
+            create_bitmap(file_paths, kmer_len, CANONICAL, syncmer_len, syncmer_offset)
         })
         .collect::<Vec<RoaringBitmap>>();
 
@@ -101,7 +106,7 @@ fn main() {
                 .map(|file| new_ref_dir_path.join(file))
                 .collect_vec();
 
-            create_bitmap(file_paths, kmer_len, CANONICAL, minimizer_len)
+            create_bitmap(file_paths, kmer_len, CANONICAL, syncmer_len, syncmer_offset)
         })
         .collect::<Vec<RoaringBitmap>>();
 

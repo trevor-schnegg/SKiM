@@ -17,19 +17,23 @@ use tracing::info;
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
-    #[arg(short, long, default_value_t = 16)]
+    #[arg(short, long, default_value_t = 14)]
     /// Length of k-mer to use in the database
     kmer_length: usize,
-
-    #[arg(short, long, default_value_t = 14)]
-    /// Length of minimizer to use in the database
-    minimizer_length: usize,
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string(), verbatim_doc_comment)]
     /// Where to write the database (.db) file.
     /// If a file is provided, the extension '.skim.db' is added.
     /// If a directory is provided, 'skim.db' will be the file name.
     output_location: String,
+
+    #[arg(short, long, default_value_t = 12)]
+    /// Length of syncmer to use in the database
+    syncmer_length: usize,
+
+    #[arg(long, default_value_t = 0)]
+    /// Offset of syncmer to use in the database
+    syncmer_offset: usize,
 
     #[arg()]
     /// The file2taxid (.f2t) file. Preferrably ordered (.o.f2t).
@@ -47,7 +51,8 @@ fn main() {
     // Parse arguments from the command line
     let args = Args::parse();
     let kmer_len = args.kmer_length;
-    let minimizer_len = args.minimizer_length;
+    let syncmer_len = args.syncmer_length;
+    let syncmer_offset = args.syncmer_offset;
     let file2taxid_path = Path::new(&args.file2taxid);
     let output_loc_path = Path::new(&args.output_location);
     let ref_dir_path = Path::new(&args.reference_directory);
@@ -72,12 +77,20 @@ fn main() {
                 .map(|file| ref_dir_path.join(file))
                 .collect_vec();
 
-            create_bitmap(file_paths, kmer_len, CANONICAL, minimizer_len)
+            create_bitmap(file_paths, kmer_len, CANONICAL, syncmer_len, syncmer_offset)
         })
         .collect::<Vec<RoaringBitmap>>();
 
     info!("constructing database...");
-    let database = Database::from(bitmaps, CANONICAL, files, tax_ids, kmer_len, minimizer_len);
+    let database = Database::from(
+        bitmaps,
+        CANONICAL,
+        files,
+        tax_ids,
+        kmer_len,
+        syncmer_len,
+        syncmer_offset,
+    );
 
     info!("dumping to file...");
     dump_data_to_file(&database, output_file).expect("could not serialize database to file");

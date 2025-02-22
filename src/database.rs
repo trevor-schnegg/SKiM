@@ -21,12 +21,13 @@ pub struct Database {
     canonical: bool,
     consts: BinomialConsts,
     files: Box<[String]>,
-    rles: Box<[RunLengthEncoding]>,
-    tax_ids: Box<[usize]>,
     kmer_len: usize,
     kmer_to_rle_index: HashMap<u32, u32>,
-    minimizer_len: usize,
     p_values: Box<[f64]>,
+    rles: Box<[RunLengthEncoding]>,
+    syncmer_len: usize,
+    syncmer_offset: usize,
+    tax_ids: Box<[usize]>,
 }
 
 impl Database {
@@ -40,7 +41,8 @@ impl Database {
         files: Vec<String>,
         tax_ids: Vec<usize>,
         kmer_len: usize,
-        minimizer_len: usize,
+        syncmer_len: usize,
+        syncmer_offset: usize,
     ) -> Self {
         let total_canonical_kmers =
             (4_usize.pow(kmer_len as u32) - 4_usize.pow(kmer_len.div_ceil(2) as u32)) / 2;
@@ -121,12 +123,13 @@ impl Database {
             canonical,
             consts: BinomialConsts::new(),
             files: files.into_boxed_slice(),
-            rles,
-            tax_ids: tax_ids.into_boxed_slice(),
             kmer_len,
             kmer_to_rle_index,
-            minimizer_len,
             p_values,
+            rles,
+            syncmer_len,
+            syncmer_offset,
+            tax_ids: tax_ids.into_boxed_slice(),
         }
     }
 
@@ -403,8 +406,14 @@ impl Database {
 
         let hit_lookup_start = Instant::now();
         // For each kmer in the read
-        for kmer in KmerIter::from(read, self.kmer_len, self.canonical, self.minimizer_len)
-            .map(|k| k as u32)
+        for kmer in KmerIter::from(
+            read,
+            self.kmer_len,
+            self.canonical,
+            self.syncmer_len,
+            self.syncmer_offset,
+        )
+        .map(|k| k as u32)
         {
             // Lookup the RLE and decompress
             if let Some(rle_index) = self.kmer_to_rle_index.get(&kmer) {
