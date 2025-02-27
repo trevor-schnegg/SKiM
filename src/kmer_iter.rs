@@ -22,7 +22,7 @@ pub struct CanonicalKmerIter<'a> {
     curr_rev_comp_kmer: usize,
     initialized: bool,
     kmer_first_letter_offset: usize,
-    kmer_length: usize,
+    kmer_len: usize,
     kmer_mask: usize,
     kmer_smer_diff: usize,
     smer_mask: usize,
@@ -31,21 +31,21 @@ pub struct CanonicalKmerIter<'a> {
 }
 
 impl<'a> CanonicalKmerIter<'a> {
-    pub fn from(sequence: &'a [u8], kmer_length: usize, syncmers: Option<(usize, usize)>) -> Self {
+    pub fn from(sequence: &'a [u8], kmer_len: usize, syncmers: Option<(usize, usize)>) -> Self {
         match syncmers {
-            Some((smer_length, syncmer_offset)) => {
-                assert!(smer_length <= kmer_length);
-                assert!(syncmer_offset <= kmer_length - smer_length);
+            Some((smer_len, syncmer_offset)) => {
+                assert!(smer_len <= kmer_len);
+                assert!(syncmer_offset <= kmer_len - smer_len);
                 CanonicalKmerIter {
                     char_iter: sequence.iter(),
                     curr_kmer: usize::MAX,
                     curr_rev_comp_kmer: usize::MAX,
                     initialized: false,
-                    kmer_first_letter_offset: (kmer_length - 1) << 1,
-                    kmer_length,
-                    kmer_mask: (1 << (kmer_length << 1)) - 1,
-                    kmer_smer_diff: kmer_length - smer_length,
-                    smer_mask: (1 << (smer_length << 1)) - 1,
+                    kmer_first_letter_offset: (kmer_len - 1) << 1,
+                    kmer_len,
+                    kmer_mask: (1 << (kmer_len << 1)) - 1,
+                    kmer_smer_diff: kmer_len - smer_len,
+                    smer_mask: (1 << (smer_len << 1)) - 1,
                     syncmer_offset,
                     use_syncmers: true,
                 }
@@ -55,9 +55,9 @@ impl<'a> CanonicalKmerIter<'a> {
                 curr_kmer: usize::MAX,
                 curr_rev_comp_kmer: usize::MAX,
                 initialized: false,
-                kmer_first_letter_offset: (kmer_length - 1) << 1,
-                kmer_length,
-                kmer_mask: (1 << (kmer_length << 1)) - 1,
+                kmer_first_letter_offset: (kmer_len - 1) << 1,
+                kmer_len,
+                kmer_mask: (1 << (kmer_len << 1)) - 1,
                 kmer_smer_diff: usize::MAX,
                 smer_mask: usize::MAX,
                 syncmer_offset: usize::MAX,
@@ -71,7 +71,7 @@ impl<'a> CanonicalKmerIter<'a> {
         let mut kmer_buffer = 0;
         let mut rev_comp_kmer_buffer = 0;
         let mut num_kmer_bases = 0_usize;
-        while num_kmer_bases < self.kmer_length {
+        while num_kmer_bases < self.kmer_len {
             match self.char_iter.next() {
                 None => {
                     // Reached the end of the sequence without a full k-mer

@@ -1,12 +1,15 @@
 use bio::io::{fasta, fastq};
+use indicatif::ProgressIterator;
+use itertools::Itertools;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
+use std::cmp::min;
 use std::fs::File;
 use std::fs::{self, DirEntry};
 use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 use crate::kmer_iter::CanonicalKmerIter;
 
@@ -82,4 +85,72 @@ pub fn create_bitmap(
         }
     }
     bitmap
+}
+
+pub fn compute_total_kmers(kmer_len: usize, syncmers: Option<(usize, usize)>) -> usize {
+    let total_kmers = 4_usize.pow(kmer_len as u32);
+    let kmer_mask = (1 << (kmer_len << 1)) - 1;
+    info!("computing total possible k-mers...");
+    match syncmers {
+        Some((smer_len, syncmer_offset)) => {
+            let smer_mask = (1 << (smer_len << 1)) - 1;
+            let kmer_smer_diff = kmer_len - smer_len;
+            (0..total_kmers)
+                .progress()
+                .filter_map(|kmer| {
+                    let canonical_kmer = min(kmer, reverse_compliment(kmer, kmer_len, kmer_mask));
+                    if kmer == canonical_kmer {
+                        if is_syncmer(kmer, kmer_smer_diff, smer_mask, syncmer_offset) {
+                            Some(kmer)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .count()
+        }
+        None => (0..total_kmers)
+            .progress()
+            .filter_map(|kmer| {
+                let canonical_kmer = min(kmer, reverse_compliment(kmer, kmer_len, kmer_mask));
+                if kmer == canonical_kmer {
+                    Some(kmer)
+                } else {
+                    None
+                }
+            })
+            .count(),
+    }
+}
+
+fn reverse_compliment(kmer: usize, kmer_len: usize, kmer_mask: usize) -> usize {
+    let mut buffer = 0;
+    let mut complement_kmer = (!kmer) & kmer_mask;
+    for _ in 0..kmer_len {
+        // Pop the right-most letter
+        let letter = complement_kmer & 3;
+        complement_kmer >>= 2;
+        // Add to the right of the buffer
+        buffer = (buffer << 2) | letter;
+    }
+    buffer
+}
+
+fn is_syncmer(kmer: usize, kmer_smer_diff: usize, smer_mask: usize, syncmer_offset: usize) -> bool {
+    if kmer_smer_diff == 0 {
+        true
+    } else {
+        let minimum_index = (0..=kmer_smer_diff)
+            .map(|i| (kmer >> ((kmer_smer_diff - i) << 1)) & smer_mask)
+            .position_min()
+            .expect("impossible case");
+
+        if minimum_index == syncmer_offset {
+            true
+        } else {
+            false
+        }
+    }
 }

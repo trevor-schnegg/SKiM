@@ -14,6 +14,7 @@ use crate::{
     rle::{
         Block, BlockIter, NaiveRunLengthEncoding, RunLengthEncoding, MAX_RUN, MAX_UNCOMPRESSED_BITS,
     },
+    utility::compute_total_kmers,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -40,8 +41,8 @@ impl Database {
         kmer_len: usize,
         syncmers: Option<(usize, usize)>,
     ) -> Self {
-        let total_canonical_kmers =
-            (4_usize.pow(kmer_len as u32) - 4_usize.pow(kmer_len.div_ceil(2) as u32)) / 2;
+        let total_kmers = compute_total_kmers(kmer_len, syncmers);
+        debug!("{} total possible k-mers", total_kmers);
 
         // Calculate probability of success (p) for each file with a debug logging step in
         // the middle
@@ -52,7 +53,7 @@ impl Database {
         debug!("total bits set: {}", bitmap_sizes.iter().sum::<u64>());
         let p_values = bitmap_sizes
             .into_par_iter()
-            .map(|size| size as f64 / total_canonical_kmers as f64)
+            .map(|size| size as f64 / total_kmers as f64)
             .collect::<Box<[f64]>>();
 
         // Initialize the naive RLEs to be the maximum possible size
@@ -357,8 +358,8 @@ impl Database {
     }
 
     fn recompute_p_values(&mut self) -> () {
-        let total_canonical_kmers =
-            (4_usize.pow(self.kmer_len as u32) - 4_usize.pow(self.kmer_len.div_ceil(2) as u32)) / 2;
+        let total_kmers = compute_total_kmers(self.kmer_len, self.syncmers);
+        debug!("{} total possible k-mers", total_kmers);
 
         let mut file2kmer_num = vec![0_usize; self.num_files()];
 
@@ -379,7 +380,7 @@ impl Database {
 
         let p_values = file2kmer_num
             .into_par_iter()
-            .map(|kmer_num| kmer_num as f64 / total_canonical_kmers as f64)
+            .map(|kmer_num| kmer_num as f64 / total_kmers as f64)
             .collect::<Box<[f64]>>();
 
         self.p_values = p_values;
