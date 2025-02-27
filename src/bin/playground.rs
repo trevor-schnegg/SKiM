@@ -1,14 +1,39 @@
-use std::time::Instant;
-
 use itertools::Itertools;
-use num_traits::Zero;
-use rand::distr::{Distribution, Uniform};
-use skim::{
-    big_exp_float::BigExpFloat, binomial_sf::sf, consts::BinomialConsts,
-    tracing::start_skim_tracing_subscriber,
-};
-use statrs::distribution::{Binomial, DiscreteCDF};
-use tracing::debug;
+use rayon::prelude::*;
+use skim::tracing::start_skim_tracing_subscriber;
+use std::cmp::min;
+use tracing::info;
+
+fn reverse_compliment(kmer: usize, kmer_length: usize, kmer_filter_bits: usize) -> usize {
+    let mut buffer = 0;
+    let mut complement_kmer = (!kmer) & kmer_filter_bits;
+    for _ in 0..kmer_length {
+        // Pop the right-most letter
+        let letter = complement_kmer & 3;
+        complement_kmer >>= 2;
+        // Add to the right of the buffer
+        buffer <<= 2;
+        buffer |= letter;
+    }
+    buffer
+}
+
+fn is_syncmer(kmer: usize, kmer_syncmer_diff: usize, syncmer_filter_bits: usize) -> bool {
+    if kmer_syncmer_diff == 0 {
+        true
+    } else {
+        let minimum_index = (0..=kmer_syncmer_diff)
+            .map(|i| (kmer >> ((kmer_syncmer_diff - i) << 1)) & syncmer_filter_bits)
+            .position_min()
+            .expect("impossible case");
+
+        if minimum_index == 2 {
+            true
+        } else {
+            false
+        }
+    }
+}
 
 fn main() {
     start_skim_tracing_subscriber();
@@ -18,47 +43,33 @@ fn main() {
     // warn!("This should be captured only by stderr");
     // error!("This should be captured only by stderr");
 
-    let assembly_count = 50_000;
-    let n = 180;
+    let kmer_length = 15_usize;
+    let syncmer_length = 9_usize;
 
-    let dist = Uniform::new(0.0, 0.01).unwrap();
-    let mut rng = rand::rng();
-    let file_probabilities = dist
-        .sample_iter(&mut rng)
-        .take(assembly_count)
-        .collect_vec();
-    let mut pre_calculated = vec![BigExpFloat::zero(); assembly_count * n];
-    let consts = BinomialConsts::new();
+    let total_kmers = 4_usize.pow(kmer_length as u32);
+    let kmer_syncmer_diff = kmer_length - syncmer_length;
+    let kmer_filter_bits = 2_usize.pow((kmer_length * 2) as u32) - 1;
+    let syncmer_filter_bits = 2_usize.pow((syncmer_length * 2) as u32) - 1;
 
-    let time = Instant::now();
-    pre_calculated
-        .iter_mut()
-        .enumerate()
-        .for_each(|(index, orig)| {
-            let (file_num, x) = (index / n, (index % n) as u64);
-            let n = n as u64;
-            let p = file_probabilities[file_num];
-            let prob_f64 = Binomial::new(p, n).unwrap().sf(x);
-
-            // If the probability is greater than 0.0, use it
-            let prob_big_exp = if prob_f64 > 0.0 {
-                BigExpFloat::from_f64(prob_f64)
+    let total_syncmers = (0..total_kmers)
+        .par_bridge()
+        .into_par_iter()
+        .filter_map(|kmer| {
+            let canonical_kmer = min(
+                kmer,
+                reverse_compliment(kmer, kmer_length, kmer_filter_bits),
+            );
+            if kmer == canonical_kmer {
+                if is_syncmer(kmer, kmer_syncmer_diff, syncmer_filter_bits) {
+                    Some(kmer)
+                } else {
+                    None
+                }
             } else {
-                // Otherwise, compute the probability using big exp
-                sf(p, n, x, &consts)
-            };
+                None
+            }
+        })
+        .count();
 
-            *orig = prob_big_exp;
-        });
-    let total_time = time.elapsed().as_secs_f64();
-    debug!("total time {} s", total_time);
-    debug!(
-        "time per computation {}/s",
-        (assembly_count as f64 * n as f64) / total_time,
-    );
-
-    debug!("first prob value: {}", file_probabilities[0]);
-    for (i, f) in pre_calculated[190..200].iter().enumerate() {
-        debug!("example {} {:?}", i, f);
-    }
+    info!("total syncmers: {}", total_syncmers);
 }

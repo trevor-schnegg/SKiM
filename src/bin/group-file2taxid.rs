@@ -11,15 +11,13 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
-const CANONICAL: bool = true;
-
 /// Groups an input file2taxid
 /// Files with the same taxid are compared and if they are similar enough, they are combined
 #[derive(Parser)]
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
-    #[arg(short, long, default_value_t = 14)]
+    #[arg(short, long, default_value_t = 15)]
     /// Length of k-mer to use in the database
     kmer_length: usize,
 
@@ -34,11 +32,11 @@ struct Args {
     /// Name means: skim, (g)rouped, (f)ile(2)(t)axid
     output_location: String,
 
-    #[arg(short, long, default_value_t = 12)]
+    #[arg(short, long, default_value_t = 9)]
     /// Length of syncmer to use in the database
-    syncmer_length: usize,
+    smer_length: usize,
 
-    #[arg(long, default_value_t = 0)]
+    #[arg(short = 't', long, default_value_t = 3)]
     /// Offset of syncmer to use in the database
     syncmer_offset: usize,
 
@@ -59,10 +57,22 @@ fn main() {
     let args = Args::parse();
     let file2taxid_path = Path::new(&args.file2taxid);
     let kmer_len = args.kmer_length;
-    let syncmer_len = args.syncmer_length;
-    let syncmer_offset = args.syncmer_offset;
     let output_loc_path = Path::new(&args.output_location);
     let ref_dir_path = Path::new(&args.reference_directory);
+
+    let syncmers = if kmer_len == args.smer_length {
+        info!(
+            "syncmers disabled: k-mer length ({}) is the same as the syncmer length",
+            kmer_len
+        );
+        None
+    } else {
+        info!(
+            "k-mer length: {}, s-mer length: {}, syncmer offset: {}",
+            kmer_len, args.smer_length, args.syncmer_offset
+        );
+        Some((args.smer_length, args.syncmer_offset))
+    };
 
     info!("using minimum similarity: {}", args.minimum_similarity);
 
@@ -105,7 +115,7 @@ fn main() {
         let bitmaps = file_paths
             .into_par_iter()
             .progress()
-            .map(|file| create_bitmap(vec![file], kmer_len, CANONICAL, syncmer_len, syncmer_offset))
+            .map(|file| create_bitmap(vec![file], kmer_len, syncmers))
             .collect::<Vec<RoaringBitmap>>();
 
         debug!("performing comparisons...");

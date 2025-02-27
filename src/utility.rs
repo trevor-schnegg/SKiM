@@ -8,7 +8,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use tracing::{error, warn};
 
-use crate::kmer_iter::KmerIter;
+use crate::kmer_iter::CanonicalKmerIter;
 
 pub const XOR_NUMBER: usize = 188_888_881;
 
@@ -67,9 +67,7 @@ pub fn get_fastq_iter_of_file(file_path: &Path) -> fastq::Records<BufReader<File
 pub fn create_bitmap(
     files: Vec<PathBuf>,
     kmer_len: usize,
-    canonical: bool,
-    syncmer_len: usize,
-    syncmer_offset: usize,
+    syncmers: Option<(usize, usize)>,
 ) -> RoaringBitmap {
     let mut bitmap = RoaringBitmap::new();
     for file in files {
@@ -78,13 +76,7 @@ pub fn create_bitmap(
             if record.seq().len() < kmer_len {
                 continue;
             }
-            for kmer in KmerIter::from(
-                record.seq(),
-                kmer_len,
-                canonical,
-                syncmer_len,
-                syncmer_offset,
-            ) {
+            for kmer in CanonicalKmerIter::from(record.seq(), kmer_len, syncmers) {
                 bitmap.insert(kmer as u32);
             }
         }

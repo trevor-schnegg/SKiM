@@ -10,7 +10,7 @@ use crate::{
     big_exp_float::BigExpFloat,
     binomial_sf::sf,
     consts::BinomialConsts,
-    kmer_iter::KmerIter,
+    kmer_iter::CanonicalKmerIter,
     rle::{
         Block, BlockIter, NaiveRunLengthEncoding, RunLengthEncoding, MAX_RUN, MAX_UNCOMPRESSED_BITS,
     },
@@ -18,15 +18,13 @@ use crate::{
 
 #[derive(Serialize, Deserialize)]
 pub struct Database {
-    canonical: bool,
     consts: BinomialConsts,
     files: Box<[String]>,
     kmer_len: usize,
     kmer_to_rle_index: HashMap<u32, u32>,
     p_values: Box<[f64]>,
     rles: Box<[RunLengthEncoding]>,
-    syncmer_len: usize,
-    syncmer_offset: usize,
+    syncmers: Option<(usize, usize)>,
     tax_ids: Box<[usize]>,
 }
 
@@ -37,12 +35,10 @@ impl Database {
 
     pub fn from(
         file_bitmaps: Vec<RoaringBitmap>,
-        canonical: bool,
         files: Vec<String>,
         tax_ids: Vec<usize>,
         kmer_len: usize,
-        syncmer_len: usize,
-        syncmer_offset: usize,
+        syncmers: Option<(usize, usize)>,
     ) -> Self {
         let total_canonical_kmers =
             (4_usize.pow(kmer_len as u32) - 4_usize.pow(kmer_len.div_ceil(2) as u32)) / 2;
@@ -120,15 +116,13 @@ impl Database {
             .collect::<Box<[RunLengthEncoding]>>();
 
         Database {
-            canonical,
             consts: BinomialConsts::new(),
             files: files.into_boxed_slice(),
             kmer_len,
             kmer_to_rle_index,
             p_values,
             rles,
-            syncmer_len,
-            syncmer_offset,
+            syncmers,
             tax_ids: tax_ids.into_boxed_slice(),
         }
     }
@@ -406,15 +400,7 @@ impl Database {
 
         let hit_lookup_start = Instant::now();
         // For each kmer in the read
-        for kmer in KmerIter::from(
-            read,
-            self.kmer_len,
-            self.canonical,
-            self.syncmer_len,
-            self.syncmer_offset,
-        )
-        .map(|k| k as u32)
-        {
+        for kmer in CanonicalKmerIter::from(read, self.kmer_len, self.syncmers).map(|k| k as u32) {
             // Lookup the RLE and decompress
             if let Some(rle_index) = self.kmer_to_rle_index.get(&kmer) {
                 self.rles[*rle_index as usize].block_iters().for_each(

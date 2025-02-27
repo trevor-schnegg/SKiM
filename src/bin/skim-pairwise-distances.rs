@@ -3,7 +3,6 @@ use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
-use skim::consts::CANONICAL;
 use skim::io::{create_output_file, dump_data_to_file, load_string2taxid};
 use skim::tracing::start_skim_tracing_subscriber;
 use skim::utility::create_bitmap;
@@ -15,7 +14,7 @@ use tracing::info;
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
-    #[arg(short, long, default_value_t = 14)]
+    #[arg(short, long, default_value_t = 15)]
     /// Length of k-mer to use in the database
     kmer_length: usize,
 
@@ -25,11 +24,11 @@ struct Args {
     /// If a directory is provided, 'skim.pd' will be the file name.
     output_location: String,
 
-    #[arg(short, long, default_value_t = 12)]
+    #[arg(short, long, default_value_t = 9)]
     /// Length of syncmer to use in the database
-    syncmer_length: usize,
+    smer_length: usize,
 
-    #[arg(long, default_value_t = 0)]
+    #[arg(short = 't', long, default_value_t = 3)]
     /// Offset of syncmer to use in the database
     syncmer_offset: usize,
 
@@ -50,10 +49,22 @@ fn main() {
     let args = Args::parse();
     let file2taxid_path = Path::new(&args.file2taxid);
     let kmer_len = args.kmer_length;
-    let syncmer_len = args.syncmer_length;
-    let syncmer_offset = args.syncmer_offset;
     let output_loc_path = Path::new(&args.output_location);
     let ref_dir_path = Path::new(&args.reference_directory);
+
+    let syncmers = if kmer_len == args.smer_length {
+        info!(
+            "syncmers disabled: k-mer length ({}) is the same as the syncmer length",
+            kmer_len
+        );
+        None
+    } else {
+        info!(
+            "k-mer length: {}, s-mer length: {}, syncmer offset: {}",
+            kmer_len, args.smer_length, args.syncmer_offset
+        );
+        Some((args.smer_length, args.syncmer_offset))
+    };
 
     // Create the output file so it errors if an incorrect output file is provided before computation
     let output_file = create_output_file(output_loc_path, "skim.pd");
@@ -72,7 +83,7 @@ fn main() {
                 .map(|file| ref_dir_path.join(file))
                 .collect_vec();
 
-            create_bitmap(file_paths, kmer_len, CANONICAL, syncmer_len, syncmer_offset)
+            create_bitmap(file_paths, kmer_len, syncmers)
         })
         .collect::<Vec<RoaringBitmap>>();
 
