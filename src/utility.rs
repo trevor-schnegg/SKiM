@@ -68,20 +68,18 @@ pub fn get_fastq_iter_of_file(file_path: &Path) -> fastq::Records<BufReader<File
 
 // Creates a single bitmap containing k-mers from all files, if necessary
 pub fn create_bitmap(
-    files: Vec<PathBuf>,
+    file: PathBuf,
     kmer_len: usize,
     syncmers: Option<(usize, usize)>,
 ) -> RoaringBitmap {
     let mut bitmap = RoaringBitmap::new();
-    for file in files {
-        let mut record_iter = get_fasta_iter_of_file(&file);
-        while let Some(Ok(record)) = record_iter.next() {
-            if record.seq().len() < kmer_len {
-                continue;
-            }
-            for kmer in CanonicalKmerIter::from(record.seq(), kmer_len, syncmers) {
-                bitmap.insert(kmer as u32);
-            }
+    let mut record_iter = get_fasta_iter_of_file(&file);
+    while let Some(Ok(record)) = record_iter.next() {
+        if record.seq().len() < kmer_len {
+            continue;
+        }
+        for kmer in CanonicalKmerIter::from(record.seq(), kmer_len, syncmers) {
+            bitmap.insert(kmer as u32);
         }
     }
     bitmap

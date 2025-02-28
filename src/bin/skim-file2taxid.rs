@@ -17,6 +17,7 @@ struct Args {
     #[arg(short, long, verbatim_doc_comment)]
     /// The accession2taxid/seqid2taxid file.
     /// If not provided, all tax ids will be set to 0.
+    /// SKiM will still report the file that each read hits to.
     accession2taxid: Option<String>,
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string(), verbatim_doc_comment)]

@@ -48,6 +48,7 @@ fn main() {
         load_data_from_file::<(Vec<Vec<u32>>, Vec<(String, usize)>)>(distances_file);
 
     info!("distances loaded! finding ordering...");
+
     // Perform the greedy solution -- no other options for right now
     let greedy_ordering = greedy_ordering(&distances, args.start);
     let (avg_dist, total_dist) = ordering_statistics(&greedy_ordering, &distances);

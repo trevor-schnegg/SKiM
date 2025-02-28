@@ -27,11 +27,12 @@ struct Args {
     output_location: String,
 
     #[arg(short, long, default_value_t = 9)]
-    /// Length of syncmer to use in the database
+    /// Length of s-mer to use in the database
     smer_length: usize,
 
-    #[arg(short = 't', long, default_value_t = 3)]
-    /// Offset of syncmer to use in the database
+    #[arg(short = 't', long, default_value_t = 2)]
+    /// Offset of s-mer to create a syncmer for database
+    /// 0 indicates no offset (open syncmers)
     syncmer_offset: usize,
 
     #[arg()]
@@ -53,8 +54,7 @@ fn main() {
     let file2taxid_path = Path::new(&args.file2taxid);
     let output_loc_path = Path::new(&args.output_location);
     let ref_dir_path = Path::new(&args.reference_directory);
-
-    let syncmers = if kmer_len == args.smer_length {
+    let syncmer_info = if kmer_len == args.smer_length {
         info!(
             "syncmers disabled: k-mer length ({}) is the same as the syncmer length",
             kmer_len
@@ -77,23 +77,15 @@ fn main() {
     let tax_ids = file2taxid_ordering.iter().map(|x| x.1).collect_vec();
     let files = file2taxid_ordering.into_iter().map(|x| x.0).collect_vec();
 
-    info!("creating roaring bitmaps for each group...");
+    info!("creating roaring bitmaps for each file...");
     let bitmaps = files
         .par_iter()
         .progress()
-        .map(|files| {
-            // Split the files up if they are grouped
-            let file_paths = files
-                .split("$")
-                .map(|file| ref_dir_path.join(file))
-                .collect_vec();
-
-            create_bitmap(file_paths, kmer_len, syncmers)
-        })
+        .map(|file| create_bitmap(ref_dir_path.join(file), kmer_len, syncmer_info))
         .collect::<Vec<RoaringBitmap>>();
 
     info!("constructing database...");
-    let database = Database::from(bitmaps, files, tax_ids, kmer_len, syncmers);
+    let database = Database::from(bitmaps, files, tax_ids, kmer_len, syncmer_info);
 
     info!("dumping to file...");
     dump_data_to_file(&database, output_file).expect("could not serialize database to file");

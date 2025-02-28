@@ -1,6 +1,5 @@
 use clap::Parser;
 use indicatif::ParallelProgressIterator;
-use itertools::Itertools;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
 use skim::io::{create_output_file, dump_data_to_file, load_string2taxid};
@@ -9,7 +8,7 @@ use skim::utility::create_bitmap;
 use std::path::Path;
 use tracing::info;
 
-/// Computes the pairwise distance (.pd) matrix (lower triangle) from the input file2taxid
+/// Computes the pairwise distance (.pd) matrix (lower triangle) from the input file2taxid (.f2t)
 #[derive(Parser)]
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
@@ -25,11 +24,12 @@ struct Args {
     output_location: String,
 
     #[arg(short, long, default_value_t = 9)]
-    /// Length of syncmer to use in the database
+    /// Length of s-mer to use in the database
     smer_length: usize,
 
-    #[arg(short = 't', long, default_value_t = 3)]
-    /// Offset of syncmer to use in the database
+    #[arg(short = 't', long, default_value_t = 2)]
+    /// Offset of s-mer to create a syncmer for database
+    /// 0 indicates no offset (open syncmers)
     syncmer_offset: usize,
 
     #[arg()]
@@ -51,8 +51,7 @@ fn main() {
     let kmer_len = args.kmer_length;
     let output_loc_path = Path::new(&args.output_location);
     let ref_dir_path = Path::new(&args.reference_directory);
-
-    let syncmers = if kmer_len == args.smer_length {
+    let syncmer_info = if kmer_len == args.smer_length {
         info!(
             "syncmers disabled: k-mer length ({}) is the same as the syncmer length",
             kmer_len
@@ -72,19 +71,11 @@ fn main() {
     info!("loading file2taxid at {}", args.file2taxid);
     let file2taxid = load_string2taxid(file2taxid_path);
 
-    info!("creating roaring bitmaps for each group...");
+    info!("creating roaring bitmaps for each file...");
     let bitmaps = file2taxid
         .par_iter()
         .progress()
-        .map(|(files, _taxid)| {
-            // Split the files up if they are grouped
-            let file_paths = files
-                .split("$")
-                .map(|file| ref_dir_path.join(file))
-                .collect_vec();
-
-            create_bitmap(file_paths, kmer_len, syncmers)
-        })
+        .map(|(file, _taxid)| create_bitmap(ref_dir_path.join(file), kmer_len, syncmer_info))
         .collect::<Vec<RoaringBitmap>>();
 
     info!("roaring bitmaps created, creating distance matrix...");

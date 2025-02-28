@@ -25,7 +25,7 @@ pub struct Database {
     kmer_to_rle_index: HashMap<u32, u32>,
     p_values: Box<[f64]>,
     rles: Box<[RunLengthEncoding]>,
-    syncmers: Option<(usize, usize)>,
+    syncmer_info: Option<(usize, usize)>,
     tax_ids: Box<[usize]>,
 }
 
@@ -39,9 +39,9 @@ impl Database {
         files: Vec<String>,
         tax_ids: Vec<usize>,
         kmer_len: usize,
-        syncmers: Option<(usize, usize)>,
+        syncmer_info: Option<(usize, usize)>,
     ) -> Self {
-        let total_kmers = compute_total_kmers(kmer_len, syncmers);
+        let total_kmers = compute_total_kmers(kmer_len, syncmer_info);
         debug!("{} total possible k-mers", total_kmers);
 
         // Calculate probability of success (p) for each file with a debug logging step in
@@ -123,7 +123,7 @@ impl Database {
             kmer_to_rle_index,
             p_values,
             rles,
-            syncmers,
+            syncmer_info,
             tax_ids: tax_ids.into_boxed_slice(),
         }
     }
@@ -358,7 +358,7 @@ impl Database {
     }
 
     fn recompute_p_values(&mut self) -> () {
-        let total_kmers = compute_total_kmers(self.kmer_len, self.syncmers);
+        let total_kmers = compute_total_kmers(self.kmer_len, self.syncmer_info);
         debug!("{} total possible k-mers", total_kmers);
 
         let mut file2kmer_num = vec![0_usize; self.num_files()];
@@ -401,7 +401,9 @@ impl Database {
 
         let hit_lookup_start = Instant::now();
         // For each kmer in the read
-        for kmer in CanonicalKmerIter::from(read, self.kmer_len, self.syncmers).map(|k| k as u32) {
+        for kmer in
+            CanonicalKmerIter::from(read, self.kmer_len, self.syncmer_info).map(|k| k as u32)
+        {
             // Lookup the RLE and decompress
             if let Some(rle_index) = self.kmer_to_rle_index.get(&kmer) {
                 self.rles[*rle_index as usize].block_iters().for_each(

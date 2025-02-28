@@ -9,7 +9,8 @@ use skim::utility::create_bitmap;
 use std::path::Path;
 use tracing::info;
 
-/// Computes the lower triangle of a pairwise distance matrix from the input sequences (or sequence groups)
+/// Extends the input pairwise distance (.pd) matrix (lower triangle) with the new file2taxid
+/// (.f2t) input
 #[derive(Parser)]
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
@@ -26,19 +27,20 @@ struct Args {
     output_location: String,
 
     #[arg(short, long, default_value_t = 9)]
-    /// Length of syncmer to use in the database
+    /// Length of s-mer to use in the database
     smer_length: usize,
 
-    #[arg(short = 't', long, default_value_t = 3)]
-    /// Offset of syncmer to use in the database
+    #[arg(short = 't', long, default_value_t = 2)]
+    /// Offset of s-mer to create a syncmer for database
+    /// 0 indicates no offset (open syncmers)
     syncmer_offset: usize,
 
     #[arg()]
-    /// The original pairwise distances file
+    /// The original pairwise distances (.pd) file
     distances: String,
 
     #[arg()]
-    /// The file2taxid map file of the new fasta files
+    /// The file2taxid (.f2t) map file of the new fasta files
     new_file2taxid: String,
 
     #[arg()]
@@ -62,8 +64,7 @@ fn main() {
     let new_ref_dir_path = Path::new(&args.new_reference_directory);
     let old_ref_dir_path = Path::new(&args.old_reference_directory);
     let output_loc_path = Path::new(&args.output_location);
-
-    let syncmers = if kmer_len == args.smer_length {
+    let syncmer_info = if kmer_len == args.smer_length {
         info!(
             "syncmers disabled: k-mer length ({}) is the same as the syncmer length",
             kmer_len
@@ -92,32 +93,17 @@ fn main() {
     let old_bitmaps = old_file2taxid
         .par_iter()
         .progress()
-        .map(|(files, _taxid)| {
-            // Split the files up if they are grouped
-            let file_paths = files
-                .split("$")
-                .map(|file| old_ref_dir_path.join(file))
-                .collect_vec();
-
-            create_bitmap(file_paths, kmer_len, syncmers)
-        })
+        .map(|(file, _taxid)| create_bitmap(old_ref_dir_path.join(file), kmer_len, syncmer_info))
         .collect::<Vec<RoaringBitmap>>();
 
     info!(
-        "{} groups need to be added, creating roaring bitmaps for new file2taxid...",
+        "{} files need to be added, creating roaring bitmaps for new file2taxid...",
         new_file2taxid.len()
     );
     let new_bitmaps = new_file2taxid
         .par_iter()
         .progress()
-        .map(|(files, _taxid)| {
-            let file_paths = files
-                .split("$")
-                .map(|file| new_ref_dir_path.join(file))
-                .collect_vec();
-
-            create_bitmap(file_paths, kmer_len, syncmers)
-        })
+        .map(|(file, _taxid)| create_bitmap(new_ref_dir_path.join(file), kmer_len, syncmer_info))
         .collect::<Vec<RoaringBitmap>>();
 
     info!("filling out distance matrix...");

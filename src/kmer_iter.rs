@@ -31,8 +31,8 @@ pub struct CanonicalKmerIter<'a> {
 }
 
 impl<'a> CanonicalKmerIter<'a> {
-    pub fn from(sequence: &'a [u8], kmer_len: usize, syncmers: Option<(usize, usize)>) -> Self {
-        match syncmers {
+    pub fn from(sequence: &'a [u8], kmer_len: usize, syncmer_info: Option<(usize, usize)>) -> Self {
+        match syncmer_info {
             Some((smer_len, syncmer_offset)) => {
                 assert!(smer_len <= kmer_len);
                 assert!(syncmer_offset <= kmer_len - smer_len);
