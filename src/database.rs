@@ -439,13 +439,9 @@ impl Database {
                 // Only find the probability if the p-value is going to be < 0.5
                 if *n_hits as f64 > (n_total as f64 * p) {
                     // Adjust the number of hits (x) and number of queries (n) based on
-                    // the maximum number allowed
-                    let x = if n_total <= n_max {
-                        *n_hits
-                    } else {
-                        (*n_hits as f64 * n_max as f64 / n_total as f64).round() as u64
-                    };
-                    let n = if n_total <= n_max { n_total } else { n_max };
+                    // the maximum number
+                    let x = (*n_hits as f64 * n_max as f64 / n_total as f64).round() as u64;
+                    let n = n_max;
 
                     if n == n_max {
                         // If n is the maximum number, lookup the probability
