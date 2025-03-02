@@ -2,10 +2,7 @@ use num_traits::{One, Zero};
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
-use statrs::{
-    distribution::{Binomial, DiscreteCDF},
-    statistics::Statistics,
-};
+use statrs::distribution::{Binomial, DiscreteCDF};
 use std::{collections::HashMap, time::Instant, u16, u32};
 use tracing::{debug, info};
 
