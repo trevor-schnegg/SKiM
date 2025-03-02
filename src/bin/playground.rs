@@ -43,8 +43,8 @@ fn main() {
     // warn!("This should be captured only by stderr");
     // error!("This should be captured only by stderr");
 
-    let kmer_length = 15_usize;
-    let syncmer_length = 9_usize;
+    let kmer_length = 14_usize;
+    let syncmer_length = 8_usize;
 
     let total_kmers = 4_usize.pow(kmer_length as u32);
     let kmer_syncmer_diff = kmer_length - syncmer_length;

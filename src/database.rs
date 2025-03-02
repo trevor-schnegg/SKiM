@@ -2,7 +2,10 @@ use num_traits::{One, Zero};
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
-use statrs::distribution::{Binomial, DiscreteCDF};
+use statrs::{
+    distribution::{Binomial, DiscreteCDF},
+    statistics::Statistics,
+};
 use std::{collections::HashMap, time::Instant, u16, u32};
 use tracing::{debug, info};
 
@@ -386,6 +389,12 @@ impl Database {
         self.p_values = p_values;
     }
 
+    pub fn avg_p_value(&self) -> () {
+        // Sanity check to be removed later
+        let avg_p_value = self.p_values.mean();
+        debug!("{}", avg_p_value);
+    }
+
     pub fn classify(
         &self,
         read: &[u8],
@@ -426,11 +435,13 @@ impl Database {
         }
         let hit_lookup_time = hit_lookup_start.elapsed().as_secs_f64();
 
+        debug!("{}", n_total);
+
         // Classify the hits
         // Would do this using min_by_key but the Ord trait is difficult to implement for float types
         let prob_calc_start = Instant::now();
         let (mut lowest_prob_index, mut lowest_prob) = (0, BigExpFloat::one());
-        for (index, probability) in num_hits
+        num_hits
             .iter()
             .zip(self.p_values.iter())
             .enumerate()
@@ -471,13 +482,13 @@ impl Database {
                     None
                 }
             })
-        {
-            // For each index that we computed, compare to find the lowest probability
-            // If (for whatever reason) two probabilities are the same, this will use the first one
-            if probability < lowest_prob {
-                (lowest_prob_index, lowest_prob) = (index, probability);
-            }
-        }
+            .for_each(|(index, probability)| {
+                // For each index that we computed, compare to find the lowest probability
+                // If (for whatever reason) two probabilities are the same, this will use the first one
+                if probability < lowest_prob {
+                    (lowest_prob_index, lowest_prob) = (index, probability);
+                }
+            });
         let prob_calc_time = prob_calc_start.elapsed().as_secs_f64();
 
         if lowest_prob < cutoff_threshold {
