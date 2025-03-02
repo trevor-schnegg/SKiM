@@ -389,12 +389,6 @@ impl Database {
         self.p_values = p_values;
     }
 
-    pub fn avg_p_value(&self) -> () {
-        // Sanity check to be removed later
-        let avg_p_value = self.p_values.mean();
-        debug!("{}", avg_p_value);
-    }
-
     pub fn classify(
         &self,
         read: &[u8],
@@ -434,8 +428,6 @@ impl Database {
             n_total += 1;
         }
         let hit_lookup_time = hit_lookup_start.elapsed().as_secs_f64();
-
-        debug!("{}", n_total);
 
         // Classify the hits
         // Would do this using min_by_key but the Ord trait is difficult to implement for float types

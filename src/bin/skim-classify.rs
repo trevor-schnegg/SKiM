@@ -63,7 +63,6 @@ fn main() {
 
     info!("loading database at {:?}", database_path);
     let database = load_data_from_file::<Database>(database_path);
-    database.avg_p_value();
 
     info!("computing lookup table...");
     let lookup_table = database.compute_loookup_table(args.max_queries);
