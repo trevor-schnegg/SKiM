@@ -1,4 +1,4 @@
-use num_traits::{One, Zero};
+use num_traits::Zero;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
@@ -390,14 +390,14 @@ impl Database {
         &self,
         read: &[u8],
         cutoff_threshold: BigExpFloat,
-        n_max: u64,
+        n_max: usize,
         lookup_table: &Vec<BigExpFloat>,
     ) -> (Option<(&str, usize)>, (f64, f64)) {
         // Create a vector to store the hits
-        let mut num_hits = vec![0_u64; self.num_files()];
+        let mut num_hits = vec![0.0; self.num_files()];
 
         // Create a variable to track the total number of kmers queried
-        let mut n_total = 0_u64;
+        let mut n_total = 0.0;
 
         let hit_lookup_start = Instant::now();
         // For each kmer in the read
@@ -410,72 +410,50 @@ impl Database {
                     |block_iter| match block_iter {
                         BlockIter::BitIter((bit_iter, start_i)) => {
                             bit_iter.map(|i| i + start_i).for_each(|i| {
-                                num_hits[i] += 1;
+                                num_hits[i] += 1.0;
                             });
                         }
                         BlockIter::Range((start_i, end_i)) => {
                             num_hits[start_i..end_i].iter_mut().for_each(|count| {
-                                *count += 1;
+                                *count += 1.0;
                             });
                         }
                     },
                 );
             }
             // Increment the total number of queries
-            n_total += 1;
+            n_total += 1.0;
         }
         let hit_lookup_time = hit_lookup_start.elapsed().as_secs_f64();
 
         // Classify the hits
         // Would do this using min_by_key but the Ord trait is difficult to implement for float types
         let prob_calc_start = Instant::now();
-        let (mut lowest_prob_index, mut lowest_prob) = (0, BigExpFloat::one());
-        num_hits
+        let (lowest_prob_index, lowest_prob) = num_hits
             .iter()
             .zip(self.p_values.iter())
             .enumerate()
             .filter_map(|(index, (n_hits, p))| {
                 // This check tries to save runtime in practice
                 // Only find the probability if the p-value is going to be < 0.5
-                if *n_hits as f64 > (n_total as f64 * p) {
-                    // Adjust the number of hits (x) and number of queries (n) based on
-                    // the maximum number allowed
-                    let x = (*n_hits as f64 * n_max as f64 / n_total as f64).round() as u64;
-                    let n = n_max;
+                if *n_hits > (n_total * p) {
+                    // Adjust the number of hits (x) based on n_max
+                    let x = (*n_hits * n_max as f64 / n_total).round() as usize;
 
-                    if n == n_max {
-                        // If n is the maximum number, lookup the probability
-                        let lookup_position = (index * (n_max + 1) as usize) + x as usize;
-                        Some((index, lookup_table[lookup_position]))
-                    } else {
-                        // Otherwise, perform the computation using f64
-                        let prob_f64 = Binomial::new(*p, n).unwrap().sf(x);
-
-                        let prob_big_exp = if prob_f64 > 0.0 {
-                            // If the probability is greater than 0.0, use it
-                            BigExpFloat::from_f64(prob_f64)
-                        } else {
-                            // Otherwise, compute the probability using big exp
-                            sf(*p, n, x, &self.consts)
-                        };
-
-                        Some((index, prob_big_exp))
-                    }
+                    //Lookup the probability
+                    let lookup_position = (index * (n_max + 1)) + x;
+                    Some((index, lookup_table[lookup_position]))
                 } else {
                     // The p-value will be greater than 0.5 (insignificant)
                     // Don't compute or lookup
                     None
                 }
             })
-            .for_each(|(index, probability)| {
-                // For each index that we computed, compare to find the lowest probability
-                // If (for whatever reason) two probabilities are the same, this will use the first one
-                if probability < lowest_prob {
-                    (lowest_prob_index, lowest_prob) = (index, probability);
-                }
-            });
+            .min_by(|a, b| a.1.partial_cmp(&b.1).expect("NaN appeared in lookup table"))
+            .unwrap();
         let prob_calc_time = prob_calc_start.elapsed().as_secs_f64();
 
+        // Handle the return values
         if lowest_prob < cutoff_threshold {
             (
                 Some((

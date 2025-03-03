@@ -25,7 +25,7 @@ struct Args {
 
     #[arg(short, long, default_value_t = 100)]
     // The maximum number of queries to use in the binomial function
-    max_queries: u64,
+    max_queries: usize,
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string(), verbatim_doc_comment)]
     /// Where to write the readid2file (.r2f) file.
@@ -65,7 +65,7 @@ fn main() {
     let database = load_data_from_file::<Database>(database_path);
 
     info!("computing lookup table...");
-    let lookup_table = database.compute_loookup_table(args.max_queries);
+    let lookup_table = database.compute_loookup_table(args.max_queries as u64);
 
     info!("classifying reads...");
     let read_iter = get_fastq_iter_of_file(reads_path);

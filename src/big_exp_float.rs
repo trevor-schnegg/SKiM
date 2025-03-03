@@ -7,7 +7,7 @@ use std::ops::{Add, Div, Mul, MulAssign, Neg, Sub};
 const ONE: BigExpFloat = BigExpFloat { exp: 0, float: 1.0 };
 const ZERO: BigExpFloat = BigExpFloat { exp: 0, float: 0.0 };
 
-#[derive(Debug, Clone, Copy, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct BigExpFloat {
     exp: i32,
     float: f32,
@@ -211,16 +211,6 @@ impl Zero for BigExpFloat {
 
     fn is_zero(&self) -> bool {
         if self.exp == 0 && self.float.is_zero() {
-            true
-        } else {
-            false
-        }
-    }
-}
-
-impl PartialEq<Self> for BigExpFloat {
-    fn eq(&self, other: &Self) -> bool {
-        if self.float == other.float && self.exp == other.exp {
             true
         } else {
             false
