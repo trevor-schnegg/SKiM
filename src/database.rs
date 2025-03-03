@@ -429,7 +429,7 @@ impl Database {
         // Classify the hits
         // Would do this using min_by_key but the Ord trait is difficult to implement for float types
         let prob_calc_start = Instant::now();
-        let (lowest_prob_index, lowest_prob) = num_hits
+        let lowest_option = num_hits
             .iter()
             .zip(self.p_values.iter())
             .enumerate()
@@ -449,21 +449,25 @@ impl Database {
                     None
                 }
             })
-            .min_by(|a, b| a.1.partial_cmp(&b.1).expect("NaN appeared in lookup table"))
-            .unwrap();
+            .min_by(|a, b| a.1.partial_cmp(&b.1).expect("NaN appeared in lookup table"));
         let prob_calc_time = prob_calc_start.elapsed().as_secs_f64();
 
         // Handle the return values
-        if lowest_prob < cutoff_threshold {
-            (
-                Some((
-                    &*self.files[lowest_prob_index],
-                    self.tax_ids[lowest_prob_index],
-                )),
-                (hit_lookup_time, prob_calc_time),
-            )
-        } else {
-            (None, (hit_lookup_time, prob_calc_time))
+        match lowest_option {
+            Some((lowest_prob_index, lowest_prob)) => {
+                if lowest_prob < cutoff_threshold {
+                    (
+                        Some((
+                            &*self.files[lowest_prob_index],
+                            self.tax_ids[lowest_prob_index],
+                        )),
+                        (hit_lookup_time, prob_calc_time),
+                    )
+                } else {
+                    (None, (hit_lookup_time, prob_calc_time))
+                }
+            }
+            None => (None, (hit_lookup_time, prob_calc_time)),
         }
     }
 }
