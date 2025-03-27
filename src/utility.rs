@@ -9,7 +9,7 @@ use std::fs::{self, DirEntry};
 use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::kmer_iter::CanonicalKmerIter;
 
