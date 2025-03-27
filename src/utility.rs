@@ -70,9 +70,6 @@ pub fn create_bitmap(
     let mut bitmap = RoaringBitmap::new();
     let mut record_iter = get_fasta_iter_of_file(&file);
     while let Some(Ok(record)) = record_iter.next() {
-        if record.seq().len() < kmer_len {
-            continue;
-        }
         for kmer in CanonicalKmerIter::from(record.seq(), kmer_len, syncmers) {
             bitmap.insert(kmer as u32);
         }

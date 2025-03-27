@@ -1,3 +1,4 @@
+use indicatif::{ParallelProgressIterator, ProgressIterator};
 use num_traits::Zero;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
@@ -42,7 +43,7 @@ impl Database {
         syncmer_info: Option<(usize, usize)>,
     ) -> Self {
         let total_kmers = compute_total_kmers(kmer_len, syncmer_info);
-        debug!("{} total possible k-mers", total_kmers);
+        info!("{} total possible k-mers", total_kmers);
 
         // Calculate probability of success (p) for each file with a debug logging step in
         // the middle
@@ -56,65 +57,60 @@ impl Database {
             .map(|size| size as f64 / total_kmers as f64)
             .collect::<Box<[f64]>>();
 
-        // Initialize the naive RLEs to be the maximum possible size
-        let mut kmer_to_naive_rle =
-            vec![NaiveRunLengthEncoding::new(); 4_usize.pow(kmer_len as u32)];
+        // Initialize the naive RLEs to be the maximum possible size to avoid new allocations
+        let mut naive_rles = vec![NaiveRunLengthEncoding::new(); total_kmers];
+        let mut kmer_to_rle_index = HashMap::with_capacity(total_kmers);
+        let mut next_rle_index = 0_u32;
 
         // Construct all naive kmer RLEs from the bitmaps
         info!("constructing naive runs...");
-        for (index, bitmap) in file_bitmaps.into_iter().enumerate() {
+        for (index, bitmap) in file_bitmaps.into_iter().enumerate().progress() {
             for kmer in bitmap {
-                kmer_to_naive_rle[kmer as usize].push(index);
+                let naive_rle_index = kmer_to_rle_index.entry(kmer).or_insert_with(|| {
+                    let new_rle_index = next_rle_index;
+                    next_rle_index += 1;
+                    new_rle_index
+                });
+                naive_rles[*naive_rle_index as usize].push(index);
             }
         }
 
         // Filter out naive rles that do not have any blocks
-        let filtered_kmers_and_rles = kmer_to_naive_rle
+        let naive_rles = naive_rles
             .into_iter()
-            .enumerate()
-            .filter_map(|(kmer, naive_rle)| {
+            .filter_map(|naive_rle| {
                 if naive_rle.num_of_blocks() == 0 {
                     None
                 } else {
-                    Some((kmer as u32, naive_rle))
+                    Some(naive_rle)
                 }
             })
-            .collect::<Vec<(u32, NaiveRunLengthEncoding)>>();
+            .collect::<Vec<NaiveRunLengthEncoding>>();
 
         // Log information about the number of naive runs
-        let naive_run_count = filtered_kmers_and_rles
+        let naive_run_count = naive_rles
             .par_iter()
-            .map(|(_kmer, naive_rle)| naive_rle.num_of_blocks())
+            .map(|naive_rle| naive_rle.num_of_blocks())
             .sum::<usize>();
         debug!("number of naive rle runs: {}", naive_run_count);
 
         // Compress the database by allowing the use of uncompressed bit sets
         info!("naive runs constructed! allowing uncompressed bit sets...");
-        let kmers_and_rles = filtered_kmers_and_rles
+        let rles = naive_rles
             .into_par_iter()
-            .map(|(kmer, naive_rle)| (kmer, naive_rle.to_rle()))
-            .collect::<Vec<(u32, RunLengthEncoding)>>();
+            .progress()
+            .map(|naive_rle| naive_rle.to_rle())
+            .collect::<Box<[RunLengthEncoding]>>();
 
         // Log information about the number of compressed runs
-        let compressed_block_num = kmers_and_rles
+        let compressed_block_num = rles
             .par_iter()
-            .map(|(_kmer, rle)| rle.num_of_blocks())
+            .map(|rle| rle.num_of_blocks())
             .sum::<usize>();
         debug!(
             "number of rle runs after allowing uncompressed bit sets: {}",
             compressed_block_num
         );
-
-        // Create a hashmap over the kmers, indicating where each kmer rle is in the vector
-        let mut kmer_to_rle_index = HashMap::with_capacity(kmers_and_rles.len());
-        let rles = kmers_and_rles
-            .into_iter()
-            .enumerate()
-            .map(|(index, (kmer, rle))| {
-                kmer_to_rle_index.insert(kmer, index as u32);
-                rle
-            })
-            .collect::<Box<[RunLengthEncoding]>>();
 
         Database {
             consts: BinomialConsts::new(),

@@ -54,6 +54,8 @@ fn main() {
     let file2taxid_path = Path::new(&args.file2taxid);
     let output_loc_path = Path::new(&args.output_location);
     let ref_dir_path = Path::new(&args.reference_directory);
+
+    // Specifically parse how syncmers should be handled
     let syncmer_info = if kmer_len == args.smer_length {
         info!(
             "syncmers disabled: k-mer length ({}) is the same as the syncmer length",
@@ -68,14 +70,13 @@ fn main() {
         Some((args.smer_length, args.syncmer_offset))
     };
 
-    // Create the output file so it errors if an incorrect output file is provided before computation
+    // Create the output file so it errors if a bad output file is provided before computation
     let output_file = create_output_file(output_loc_path, "skim.db");
 
     // Load the file2taxid ordering
     info!("loading file2taxid at {}", args.file2taxid);
-    let file2taxid_ordering = load_string2taxid(file2taxid_path);
-    let tax_ids = file2taxid_ordering.iter().map(|x| x.1).collect_vec();
-    let files = file2taxid_ordering.into_iter().map(|x| x.0).collect_vec();
+    let (files, tax_ids): (Vec<String>, Vec<usize>) =
+        load_string2taxid(file2taxid_path).into_iter().unzip();
 
     info!("creating roaring bitmaps for each file...");
     let bitmaps = files

@@ -10,7 +10,7 @@ use std::{
 };
 use tracing::{debug, info};
 
-/// Creates an ordered file2taxid (.o.f2t) file based on a pairwise distance matrix.
+/// Creates an ordered file2taxid (.o.f2t) file based on a pairwise distance (.pd) matrix.
 /// This is done such that the total hamming distance of the ordering is as small as possible.
 #[derive(Parser)]
 #[clap(version, about)]
@@ -40,7 +40,7 @@ fn main() {
     let distances_file = Path::new(&args.distances);
     let output_loc_path = Path::new(&args.output_location);
 
-    // Create the output file so it errors if an incorrect output file is provided before computation
+    // Create the output file so it errors if a bad output file is provided before computation
     let mut output_writer = BufWriter::new(create_output_file(output_loc_path, "skim.o.f2t"));
 
     info!("loading distances at {}", args.distances);
@@ -54,6 +54,8 @@ fn main() {
     let (avg_dist, total_dist) = ordering_statistics(&greedy_ordering, &distances);
     debug!("length of tour: {}", total_dist);
     debug!("average distance between files: {}", avg_dist);
+
+    info!("writing to output file...");
 
     for index in greedy_ordering {
         let (files_string, taxid) = &file2taxid[index];

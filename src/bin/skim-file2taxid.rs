@@ -95,6 +95,8 @@ fn main() {
         })
         .collect::<Vec<(PathBuf, usize)>>();
 
+    info!("writing to output file...");
+
     for (file, taxid) in file2taxid {
         // Write the result to the output file
         output_writer

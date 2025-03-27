@@ -41,7 +41,7 @@ fn main() {
         panic!("compression level was not 1, 2, or 3!")
     };
 
-    // Create the output file so it errors if an incorrect output file is provided before computation
+    // Create the output file so it errors if a bad output file is provided before computation
     let output_file = create_output_file(output_loc_path, "skim.cdb");
 
     info!("loading database at {:?}", database_path);

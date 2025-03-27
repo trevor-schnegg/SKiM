@@ -51,6 +51,8 @@ fn main() {
     let kmer_len = args.kmer_length;
     let output_loc_path = Path::new(&args.output_location);
     let ref_dir_path = Path::new(&args.reference_directory);
+
+    // Specifically parse how syncmers should be handled
     let syncmer_info = if kmer_len == args.smer_length {
         info!(
             "syncmers disabled: k-mer length ({}) is the same as the syncmer length",
@@ -65,7 +67,7 @@ fn main() {
         Some((args.smer_length, args.syncmer_offset))
     };
 
-    // Create the output file so it errors if an incorrect output file is provided before computation
+    // Create the output file so it errors if a bad output file is provided before computation
     let output_file = create_output_file(output_loc_path, "skim.pd");
 
     info!("loading file2taxid at {}", args.file2taxid);
@@ -100,7 +102,7 @@ fn main() {
         })
         .collect::<Vec<Vec<u32>>>();
 
-    info!("distance matrix completed! outputting to file...");
+    info!("writing to output file...");
     dump_data_to_file(&(distances, file2taxid), output_file)
         .expect("could not output distances to file");
 

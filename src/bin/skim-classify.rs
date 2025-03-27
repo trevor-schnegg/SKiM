@@ -53,7 +53,7 @@ fn main() {
     let output_loc_path = Path::new(&args.output_location);
     let reads_path = Path::new(&args.reads);
 
-    // Create the output file so it errors if an incorrect output file is provided before computation
+    // Create the output file so it errors if a bad output file is provided before computation
     let output_file = create_output_file(output_loc_path, "skim.r2f");
 
     // Create a mutex over a writer to allow multiple threads to write to the output file
