@@ -1,6 +1,5 @@
 use clap::Parser;
 use indicatif::ParallelProgressIterator;
-use itertools::Itertools;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
 use skim::database::Database;
