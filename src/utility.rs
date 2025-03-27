@@ -9,7 +9,7 @@ use std::fs::{self, DirEntry};
 use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
-use tracing::{error, info, warn};
+use tracing::warn;
 
 use crate::kmer_iter::CanonicalKmerIter;
 
@@ -22,8 +22,8 @@ fn is_fasta_file(entry: &DirEntry) -> bool {
         || entry_file_name.ends_with(".fa")
 }
 
-pub fn get_fasta_files(reference_loc: &Path) -> Vec<PathBuf> {
-    let dir_content = fs::read_dir(reference_loc).expect("could not read reference directory");
+pub fn get_fasta_files(ref_loc: &Path) -> Vec<PathBuf> {
+    let dir_content = fs::read_dir(ref_loc).expect("could not read reference directory");
     dir_content
         .par_bridge()
         .into_par_iter()
@@ -33,19 +33,14 @@ pub fn get_fasta_files(reference_loc: &Path) -> Vec<PathBuf> {
                     Some(entry.path())
                 } else {
                     warn!(
-                        "directory entry {:?} did not end with '.fna', '.fasta', or '.fa', skipping...",
+                        "reference directory entry {:?} not recognized as a fasta file (did not end with '.fna', '.fasta', or '.fa'), skipping...",
                         entry
                     );
                     None
                 }
             }
             Err(e) => {
-                error!(
-                    "error encountered while reading reference directory {:?}",
-                    reference_loc
-                );
-                error!("{}", e);
-                warn!("attempting to continue execution...");
+                warn!("error encountered while reading reference directory: {}. trying to continue...", e);
                 None
             }
         })

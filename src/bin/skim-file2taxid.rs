@@ -7,7 +7,7 @@ use skim::utility::{get_fasta_files, get_fasta_iter_of_file};
 use std::collections::HashMap;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 /// Creates a file2taxid (.f2t) file of the form <fasta-file>\t<taxid> for a given a reference location
 #[derive(Parser)]
@@ -38,9 +38,9 @@ fn main() {
     // Parse arguments from the command line
     let args = Args::parse();
     let output_loc_path = Path::new(&args.output_location);
-    let reference_dir_path = Path::new(&args.reference_directory);
+    let ref_dir_path = Path::new(&args.reference_directory);
 
-    // Create the output file so it errors if an incorrect output file is provided before computation
+    // Create the output file so it errors if a bad output file is provided before computation
     let mut output_writer = BufWriter::new(create_output_file(output_loc_path, "skim.f2t"));
 
     // Get the accession2taxid, if one was provided
@@ -60,7 +60,7 @@ fn main() {
     };
 
     info!("searching through files in {}", args.reference_directory);
-    let file2taxid = get_fasta_files(reference_dir_path)
+    let file2taxid = get_fasta_files(ref_dir_path)
         .into_par_iter()
         .progress()
         .filter_map(|file| {
@@ -71,7 +71,7 @@ fn main() {
                     match get_fasta_iter_of_file(&file).next() {
                         None => {
                             warn!(
-                                "no first record found in fasta file at {:?}. skipping...",
+                                "no first record found in fasta file {:?}. skipping...",
                                 file
                             );
                             None
@@ -85,9 +85,7 @@ fn main() {
                                 Some((file, taxid))
                             }
                             Err(e) => {
-                                error!("error encountered while parsing fasta file {:?}", file);
-                                error!("{:?}", e);
-                                warn!("skipping...");
+                                warn!("while parsing fasta file {:?}, encountered an error: {}. skipping...", file, e);
                                 None
                             }
                         },

@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 pub fn create_output_file(path: &Path, extension: &str) -> File {
     let file_path = if path.is_dir() {
@@ -20,11 +20,11 @@ pub fn create_output_file(path: &Path, extension: &str) -> File {
 }
 
 pub fn split_string_to_taxid(line: String) -> Result<(String, usize), String> {
-    let split_line = line.split("\t").collect::<Vec<&str>>();
-    let file = split_line[0].to_string();
+    let mut column_iter = line.split("\t");
+    let file = column_iter.next().unwrap().to_string();
 
-    // If there is no tab character, index 1 will not exist
-    match split_line.get(1) {
+    // If there is no tab character, .next() will not exist
+    match column_iter.next() {
         None => Err("line did not have a tab character".to_string()),
         Some(str) => {
             // Try to parse as a usize
@@ -53,20 +53,18 @@ pub fn load_string2taxid(string2taxid: &Path) -> Vec<(String, usize)> {
                     match split_string_to_taxid(line) {
                         Ok(tuple) => Some(tuple),
                         Err(msg) => {
-                            error!("{}", msg);
                             warn!(
-                                "line {} from {:?} gave the previous error. skipping...",
-                                line_num, string2taxid
+                                "line {} from {:?} had an error :{}. skipping...",
+                                line_num, string2taxid, msg
                             );
                             None
                         }
                     }
                 }
                 Err(e) => {
-                    error!("{:?}", e);
                     warn!(
-                        "line {} from {:?} gave the previous error. skipping...",
-                        line_num, string2taxid
+                        "line {} from {:?} had an error :{}. skipping...",
+                        line_num, string2taxid, e
                     );
                     None
                 }
