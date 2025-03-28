@@ -82,10 +82,6 @@ impl BigExpFloat {
     pub fn as_f64(&self) -> f64 {
         self.float as f64 * 2.0_f64.powi(self.exp)
     }
-
-    pub fn to_tuple(self) -> (i32, f32) {
-        (self.exp, self.float)
-    }
 }
 
 impl Mul for BigExpFloat {
