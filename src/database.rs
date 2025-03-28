@@ -1,5 +1,4 @@
 use indicatif::{ParallelProgressIterator, ProgressIterator};
-use num_traits::Zero;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
@@ -124,11 +123,11 @@ impl Database {
         }
     }
 
-    pub fn compute_loookup_table(&self, n_max: u64) -> Vec<BigExpFloat> {
+    pub fn compute_loookup_table(&self, n_max: u64) -> Vec<(i32, f32)> {
         // Including 0 hits, there are n_max + 1 total possible values for the number of hits
         let possible_hit_numbers = (n_max + 1) as usize;
 
-        let mut lookup_table = vec![BigExpFloat::zero(); self.num_files() * possible_hit_numbers];
+        let mut lookup_table = vec![(0, 0.0); self.num_files() * possible_hit_numbers];
         lookup_table
             .par_iter_mut()
             .enumerate()
@@ -142,10 +141,10 @@ impl Database {
 
                 // If the probability is greater than 0.0, use it
                 let prob_big_exp = if prob_f64 > 0.0 {
-                    BigExpFloat::from_f64(prob_f64)
+                    BigExpFloat::from_f64(prob_f64).to_tuple()
                 } else {
                     // Otherwise, compute the probability using big exp
-                    sf(p, n_max, x, &self.consts)
+                    sf(p, n_max, x, &self.consts).to_tuple()
                 };
 
                 *placeholder_float = prob_big_exp;
@@ -200,7 +199,7 @@ impl Database {
 
         self.rles.par_iter_mut().for_each(|current_rle| {
             // variable to hold the new lossy compressed blocks as u16s
-            let mut compressed_blocks = vec![];
+            let mut compressed_blocks = Vec::with_capacity(current_rle.num_of_blocks());
 
             // peekable iterator over the current runs
             let mut block_iter = current_rle
@@ -350,12 +349,13 @@ impl Database {
         debug!("total blocks after compression {}", total_blocks);
 
         // Recompute the p_values after
+        info!("recomputing p-values for all targets");
         self.recompute_p_values();
     }
 
     fn recompute_p_values(&mut self) -> () {
         let total_kmers = compute_total_kmers(self.kmer_len, self.syncmer_info);
-        debug!("{} total possible k-mers", total_kmers);
+        info!("{} total possible k-mers", total_kmers);
 
         let mut file2kmer_num = vec![0_usize; self.num_files()];
 
@@ -385,9 +385,9 @@ impl Database {
     pub fn classify(
         &self,
         read: &[u8],
-        cutoff_threshold: BigExpFloat,
+        cutoff_threshold: (i32, f32),
         n_max: usize,
-        lookup_table: &Vec<BigExpFloat>,
+        lookup_table: &Vec<(i32, f32)>,
     ) -> (Option<(&str, usize)>, (f64, f64)) {
         // Create a vector to store the hits
         let mut num_hits = vec![0.0; self.num_files()];
@@ -425,7 +425,7 @@ impl Database {
         // Classify the hits
         // Would do this using min_by_key but the Ord trait is difficult to implement for float types
         let prob_calc_start = Instant::now();
-        let lowest_option = num_hits
+        let lowest = num_hits
             .iter()
             .zip(self.p_values.iter())
             .enumerate()
@@ -449,7 +449,7 @@ impl Database {
         let prob_calc_time = prob_calc_start.elapsed().as_secs_f64();
 
         // Handle the return values
-        match lowest_option {
+        match lowest {
             Some((lowest_prob_index, lowest_prob)) => {
                 if lowest_prob < cutoff_threshold {
                     (

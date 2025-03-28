@@ -18,7 +18,7 @@ use tracing::{debug, info, warn};
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
-    #[arg(short, long, default_value_t = 6, verbatim_doc_comment)]
+    #[arg(short, long, default_value_t = 10, verbatim_doc_comment)]
     /// The exponent 'e' used in the equation 10^{-e}.
     /// Any calculated p-value below 10^{-e} will result in a classification.
     exp_cutoff: i32,
@@ -48,7 +48,7 @@ fn main() {
 
     // Parse arguments from the command line
     let args = Args::parse();
-    let cutoff_threshold = BigExpFloat::from_f64(10.0_f64.powi((args.exp_cutoff).neg()));
+    let cutoff_threshold = BigExpFloat::from_f64(10.0_f64.powi((args.exp_cutoff).neg())).to_tuple();
     let database_path = Path::new(&args.database);
     let output_loc_path = Path::new(&args.output_location);
     let reads_path = Path::new(&args.reads);
