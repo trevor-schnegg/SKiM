@@ -6,10 +6,10 @@ use roaring::RoaringBitmap;
 use std::cmp::min;
 use std::fs::File;
 use std::fs::{self, DirEntry};
-use std::io::BufReader;
+use std::io::{BufReader, ErrorKind};
 use std::path::Path;
 use std::path::PathBuf;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 use crate::kmer_iter::CanonicalKmerIter;
 
@@ -23,7 +23,11 @@ fn is_fasta_file(entry: &DirEntry) -> bool {
 }
 
 pub fn get_fasta_files(ref_loc: &Path) -> Vec<PathBuf> {
-    let dir_content = fs::read_dir(ref_loc).expect("could not read reference directory");
+    let dir_content = fs::read_dir(ref_loc).expect(&*format!(
+        "could not read reference directory {:?}",
+        ref_loc
+    ));
+
     dir_content
         .par_bridge()
         .into_par_iter()
@@ -50,14 +54,20 @@ pub fn get_fasta_files(ref_loc: &Path) -> Vec<PathBuf> {
 pub fn get_fasta_iter_of_file(file_path: &Path) -> fasta::Records<BufReader<File>> {
     match fasta::Reader::from_file(file_path) {
         Ok(reader) => reader.records(),
-        Err(error) => panic!("{}", error),
+        Err(error) => panic!(
+            "unable to get fasta iter of {:?} because of the following error: {}",
+            file_path, error
+        ),
     }
 }
 
 pub fn get_fastq_iter_of_file(file_path: &Path) -> fastq::Records<BufReader<File>> {
     match fastq::Reader::from_file(file_path) {
         Ok(reader) => reader.records(),
-        Err(error) => panic!("{}", error),
+        Err(error) => panic!(
+            "unable to get fastq iter of {:?} because of the following error: {}",
+            file_path, error
+        ),
     }
 }
 
@@ -143,4 +153,46 @@ fn is_syncmer(kmer: usize, kmer_smer_diff: usize, smer_mask: usize, syncmer_offs
             false
         }
     }
+}
+
+pub fn create_ref_subdir(ref_subdir: &PathBuf) {
+    info!("creating directory {:?} to store split files", ref_subdir);
+    match fs::create_dir(ref_subdir) {
+        Ok(()) => debug!("dirctory created successfully!"),
+        Err(e) => match e.kind() {
+            ErrorKind::AlreadyExists => {
+                debug!("directory already exists (likely from a previous execution), continuing...")
+            }
+            e => panic!("{}", e),
+        },
+    }
+}
+
+pub fn split_record(
+    record: fasta::Record,
+    max_len: usize,
+    overlap_len: usize,
+) -> Vec<fasta::Record> {
+    let half_overlap_len = overlap_len / 2;
+
+    let num_fragments = record.seq().len().div_ceil(max_len);
+    let fragment_len = record.seq().len().div_ceil(num_fragments);
+
+    (0..num_fragments)
+        .map(|fragment_index| {
+            let start = fragment_index * fragment_len;
+            let start_w_overlap = if start == 0 {
+                0
+            } else {
+                start - half_overlap_len
+            };
+            let end_w_overlap = min(start + fragment_len + half_overlap_len, record.seq().len());
+
+            fasta::Record::with_attrs(
+                record.id(),
+                Some(&*format!("{}..{}", start_w_overlap, end_w_overlap)),
+                &record.seq()[start_w_overlap..end_w_overlap],
+            )
+        })
+        .collect::<Vec<fasta::Record>>()
 }

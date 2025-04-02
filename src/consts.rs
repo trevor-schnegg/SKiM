@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 
 pub const CANONICAL: bool = true;
 
+pub const REF_SUBDIR: &str = "skim";
+
 #[derive(Serialize, Deserialize)]
 pub struct BinomialConsts {
     pub(crate) gamma_r: f64,

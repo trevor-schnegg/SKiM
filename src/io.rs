@@ -1,10 +1,11 @@
+use bio::io::fasta;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
 use std::fs::File;
 use std::io::BufWriter;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 
 pub fn create_output_file(path: &Path, extension: &str) -> File {
@@ -92,4 +93,16 @@ pub fn load_data_from_file<T: for<'a> Deserialize<'a>>(path: &Path) -> T {
         path,
         type_name::<T>()
     ))
+}
+
+pub fn save_fasta_record_to_file(record: fasta::Record, file_path: &PathBuf) -> () {
+    let file = File::create(file_path).expect("could not create output file");
+    let mut fasta_writer = fasta::Writer::new(BufWriter::new(file));
+    fasta_writer.write_record(&record).expect(&*format!(
+        "could not write to new fasta file {:?}",
+        file_path
+    ));
+    fasta_writer
+        .flush()
+        .expect("could not flush fasta file output writer");
 }
