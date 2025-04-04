@@ -2,7 +2,7 @@ use clap::Parser;
 use indicatif::ParallelProgressIterator;
 use itertools::Itertools;
 use rayon::prelude::*;
-use skim::consts::REF_SUBDIR;
+use skim::consts::{DEFAULT_K, REF_SUBDIR};
 use skim::io::{create_output_file, load_string2taxid, save_fasta_record_to_file};
 use skim::tracing::start_skim_tracing_subscriber;
 use skim::utility::{
@@ -38,7 +38,7 @@ struct Args {
     /// SKiM will still report the file that each read hits to.
     accession2taxid: Option<String>,
 
-    #[arg(short, long, default_value_t = 15)]
+    #[arg(short, long, default_value_t = DEFAULT_K)]
     /// Length of k-mer to use in the database
     kmer_length: usize,
 
@@ -71,6 +71,7 @@ fn main() {
     // Create the output file so it errors if a bad output file is provided before computation
     let mut output_writer = BufWriter::new(create_output_file(output_loc_path, "skim.f2t"));
 
+    info!("k-mer length: {}", kmer_len);
     let total_kmers = compute_total_kmers(kmer_len, None);
     let total_len_allowed = (total_kmers as f64 * MAX_PROB).round() as usize;
 
@@ -128,6 +129,8 @@ fn main() {
                     let mut ref_subdir_created = ref_subdir_created.lock().unwrap();
                     if !*ref_subdir_created {
                         info!("a file exceeded the max number of base pairs to reliably be used in classification");
+                        info!("skim will try to split such files by record");
+                        info!("if an individual record is still too long, the record will be split into fragments with an overlap of {} (as specified by the option -l)", overlap_len);
                         create_ref_subdir(&ref_subdir);
                         *ref_subdir_created = true;
                     }
@@ -137,13 +140,16 @@ fn main() {
                 let file_name = file.file_name().unwrap().to_str().unwrap();
                 records.into_iter().enumerate().map(|(record_index, record)| {
                     let output_file_base = ref_subdir.join(file_name);
+
                     if record.seq().len() > total_len_allowed {
+                        // If the record is still too long, split into fragments and save to files
                         split_record(record, total_len_allowed, overlap_len).into_iter().enumerate().map(|(record_subindex, new_record)| {
                             let output_file = output_file_base.with_extension(format!("{}.{}", record_index, record_subindex));
                             save_fasta_record_to_file(new_record, &output_file);
                             (output_file, taxid)
                         }).collect::<Vec<(PathBuf, usize)>>()
                     } else {
+                        // If the record is short enough, just save to a new file
                         let output_file = output_file_base.with_extension(record_index.to_string());
                         save_fasta_record_to_file(record, &output_file);
                         vec![(output_file, taxid)]

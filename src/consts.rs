@@ -2,6 +2,11 @@ use crate::big_exp_float::BigExpFloat;
 use serde::{Deserialize, Serialize};
 
 pub const CANONICAL: bool = true;
+pub const DEFAULT_K: usize = 15;
+pub const DEFAULT_S: usize = 9;
+pub const DEFAULT_T: usize = 2;
+pub const DEFAULT_TOTAL_KMERS: usize = 63439162;
+pub const TOTAL_CANONICAL_15MERS: usize = 536870912;
 
 pub const REF_SUBDIR: &str = "skim";
 

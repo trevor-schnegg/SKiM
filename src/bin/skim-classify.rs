@@ -18,7 +18,7 @@ use tracing::{debug, info, warn};
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
-    #[arg(short, long, default_value_t = 10, verbatim_doc_comment)]
+    #[arg(short, long, default_value_t = 12, verbatim_doc_comment)]
     /// The exponent 'e' used in the equation 10^{-e}.
     /// Any calculated p-value below 10^{-e} will result in a classification.
     exp_cutoff: i32,
@@ -67,7 +67,10 @@ fn main() {
     info!("computing lookup table...");
     let lookup_table = database.compute_loookup_table(args.max_queries as u64);
 
-    info!("classifying reads...");
+    info!(
+        "classifying reads with cutoff threshold {}...",
+        cutoff_threshold.as_f64()
+    );
     let read_iter = get_fastq_iter_of_file(reads_path);
     let start_time = Instant::now();
 

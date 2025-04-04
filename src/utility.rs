@@ -11,9 +11,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use tracing::{debug, info, warn};
 
+use crate::consts::{DEFAULT_K, DEFAULT_S, DEFAULT_T, DEFAULT_TOTAL_KMERS, TOTAL_CANONICAL_15MERS};
 use crate::kmer_iter::CanonicalKmerIter;
-
-pub const XOR_NUMBER: usize = 188_888_881;
 
 fn is_fasta_file(entry: &DirEntry) -> bool {
     let entry_file_name = entry.file_name().to_str().unwrap().to_string();
@@ -88,6 +87,13 @@ pub fn create_bitmap(
 }
 
 pub fn compute_total_kmers(kmer_len: usize, syncmers: Option<(usize, usize)>) -> usize {
+    // Handle some special values that we don't need to compute
+    if kmer_len == DEFAULT_K && Some((DEFAULT_S, DEFAULT_T)) == syncmers {
+        return DEFAULT_TOTAL_KMERS;
+    } else if kmer_len == 15 && None == syncmers {
+        return TOTAL_CANONICAL_15MERS;
+    }
+
     let total_kmers = 4_usize.pow(kmer_len as u32);
     let kmer_mask = (1 << (kmer_len << 1)) - 1;
     info!("computing total possible k-mers...");

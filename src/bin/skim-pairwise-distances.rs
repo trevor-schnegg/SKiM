@@ -2,6 +2,7 @@ use clap::Parser;
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
 use roaring::RoaringBitmap;
+use skim::consts::{DEFAULT_K, DEFAULT_S, DEFAULT_T};
 use skim::io::{create_output_file, dump_data_to_file, load_string2taxid};
 use skim::tracing::start_skim_tracing_subscriber;
 use skim::utility::create_bitmap;
@@ -13,7 +14,7 @@ use tracing::info;
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
-    #[arg(short, long, default_value_t = 15)]
+    #[arg(short, long, default_value_t = DEFAULT_K)]
     /// Length of k-mer to use in the database
     kmer_length: usize,
 
@@ -23,11 +24,11 @@ struct Args {
     /// If a directory is provided, 'skim.pd' will be the file name.
     output_location: String,
 
-    #[arg(short, long, default_value_t = 9)]
+    #[arg(short, long, default_value_t = DEFAULT_S)]
     /// Length of s-mer to use in the database
     smer_length: usize,
 
-    #[arg(short = 't', long, default_value_t = 2)]
+    #[arg(short = 't', long, default_value_t = DEFAULT_T)]
     /// Offset of s-mer to create a syncmer for database
     /// 0 indicates no offset (open syncmers)
     syncmer_offset: usize,
