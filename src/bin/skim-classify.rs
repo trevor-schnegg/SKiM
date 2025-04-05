@@ -69,7 +69,7 @@ fn main() {
 
     info!(
         "classifying reads with cutoff threshold {}...",
-        cutoff_threshold.as_f64()
+        10.0_f64.powi((args.exp_cutoff).neg())
     );
     let read_iter = get_fastq_iter_of_file(reads_path);
     let start_time = Instant::now();
