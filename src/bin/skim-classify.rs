@@ -104,12 +104,12 @@ fn main() {
                 match classification {
                     Some((file, taxid)) => {
                         writer
-                            .write(format!("{}\t{}\t{}\n", record.id(), file, taxid).as_bytes())
+                            .write(format!("C\t{}\t{}\t{}\n", record.id(), taxid, file).as_bytes())
                             .expect("could not write to output file");
                     }
                     None => {
                         writer
-                            .write(format!("{}\tU\t0\n", record.id()).as_bytes())
+                            .write(format!("U\t{}\t0\n-", record.id()).as_bytes())
                             .expect("could not write to output file");
                     }
                 };
