@@ -18,20 +18,20 @@ use tracing::{debug, info, warn};
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
-    #[arg(short, long, default_value_t = 12, verbatim_doc_comment)]
+    #[arg(short, long, default_value_t = 9, verbatim_doc_comment)]
     /// The exponent 'e' used in the equation 10^{-e}.
     /// Any calculated p-value below 10^{-e} will result in a classification.
     exp_cutoff: i32,
-
-    #[arg(short, long, default_value_t = 100)]
-    // The maximum number of queries to use in the binomial function
-    max_queries: usize,
 
     #[arg(short, long, default_value_t = std::env::current_dir().unwrap().to_str().unwrap().to_string(), verbatim_doc_comment)]
     /// Where to write the readid2file (.r2f) file.
     /// If a file is provided, the extension '.skim.r2f' is added.
     /// If a directory is provided, 'skim.r2f' will be the file name.
     output_location: String,
+
+    #[arg(short, long, default_value_t = 100)]
+    // The number of trials to use in the binomial function
+    trial_number: usize,
 
     #[arg()]
     /// The database (.db/.cdb) file
@@ -65,7 +65,7 @@ fn main() {
     let database = load_data_from_file::<Database>(database_path);
 
     info!("computing lookup table...");
-    let lookup_table = database.compute_loookup_table(args.max_queries as u64);
+    let lookup_table = database.compute_loookup_table(args.trial_number as u64);
 
     info!(
         "classifying reads with cutoff threshold {}...",
@@ -86,7 +86,7 @@ fn main() {
                 let (classification, (hit_lookup_time, prob_calc_time)) = database.classify(
                     record.seq(),
                     cutoff_threshold,
-                    args.max_queries,
+                    args.trial_number,
                     &lookup_table,
                 );
 
@@ -109,7 +109,7 @@ fn main() {
                     }
                     None => {
                         writer
-                            .write(format!("U\t{}\t0\n-", record.id()).as_bytes())
+                            .write(format!("U\t{}\t0\t-\n", record.id()).as_bytes())
                             .expect("could not write to output file");
                     }
                 };
