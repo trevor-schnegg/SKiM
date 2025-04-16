@@ -93,7 +93,7 @@ In reference to the provided [index construction steps](#index-construction), th
 
 2. Skip steps 2 and 3, but create a custom ordering for the file2taxid. For example, assuming that a seqid2taxid was provided in step 1, the file2taxid could be sorted by taxid using the linux `sort` command. In theory, at least the FASTA files with the same tax id will end up next to each other in the file. This benefits the way that SKiM performs compression, and it is likely to provide at least some benefits over the semi-random ordering obtained from step 1. Again, the database is still likely to be far from its minimum possbible size and maximum possible throughput. But, it will perform the same classification-wise and the total index preparation time and resources would be reduced.
 
-#### Modifying $k$-mer Size and Sub-sampling
+#### Modifying k-mer Size and Sub-sampling
 
 If you plan on modifying $k$-mer size and/or sub-sampling parameters ($s$ and $t$), please make sure to provide the same options to all binaries in the index construction process. If the desired parameters are absent from one or more steps, the overall database may not be as optimized as it could be.
 
