@@ -47,7 +47,7 @@ If using a pre-built database, skip to [classification](#classification).
     * A `seqid2taxid` file is **not** required (but see [here](#getting-a-seqid2taxid) for how to get one). If not provided, all tax ids will be set to 0, but SKiM will still be able to report the file that a read hits to (if any). In this way, SKiM can be used independent of a taxonomy.
     * Because SKiM uses short $k$-mers, FASTA files in `ref/` whose total length is too long may need to be split to ensure classification accuracy. If needed, SKiM will create the directory `ref/skim/` to store split FASTA files. If a FASTA file is too large, SKiM will try to split the file by sequence. If a sequence is still too large, it will then chop the sequence into fragments with overlap (adjustable with option `-l`).
 
-2. Compute the pairwise distances (.pd) matrix from the file2taxid (.f2t) As an example:
+2. Compute the pairwise distances (.pd) matrix from the file2taxid (.f2t). As an example:
 
     ```
     skim-pairwise-distances -o example example.skim.f2t ref/
