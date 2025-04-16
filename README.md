@@ -105,7 +105,7 @@ Once a database (.db) file is obtained, classification produces a readid2file (.
 skim-classify -e 9 -o example example.skim.db reads.fastq
 ```
 
-This performs classification on the FASTQ reads `reads.fastq` using the database `example.skim.db`, a statistical cutoff threshold of $10^{-9}$, and writes the output to example.skim.r2f. A few additional notes:
+This performs classification on the FASTQ reads `reads.fastq` using the database `example.skim.db`, a statistical cutoff threshold of $10^{-9}$, and writes the output to `example.skim.r2f`. A few additional notes:
 
 * The `-e` parameter is used in the equation $10^{-e}$ and, as outlined in our paper, is the statistical significance required to consider a read classified. By default, $e=9$. However, if you'd like to increase the precision of classification (at the cost of some recall), you should increase this parameter to $e=12$, $e=15$, or even $e=18$.
 * Although the output file is called a readid2file (.r2f), the output format follows Kraken2's output as closely as possible. Specifically, it is a tab-delimited file where the columns are (from right to left):
