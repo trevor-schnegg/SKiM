@@ -32,12 +32,6 @@ fn get_taxid(accession2taxid: &Option<HashMap<String, usize>>, accession: &str) 
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
-    #[arg(short, long, verbatim_doc_comment)]
-    /// The accession2taxid/seqid2taxid file.
-    /// If not provided, all tax ids will be set to 0.
-    /// SKiM will still report the file that each read hits to.
-    accession2taxid: Option<String>,
-
     #[arg(short, long, default_value_t = DEFAULT_K)]
     /// Length of k-mer to use in the database
     kmer_length: usize,
@@ -51,6 +45,12 @@ struct Args {
     #[arg(short = 'l', long, default_value_t = 1_000_000)]
     /// The total base pairs of overlap if sequences need to be split
     overlap_length: usize,
+
+    #[arg(short, long, verbatim_doc_comment)]
+    /// The seqid2taxid/accession2taxid file of the form `<seqid>\t<taxid>`.
+    /// If not provided, all tax ids will be set to 0.
+    /// SKiM will still report the file that each read hits to (if any).
+    seqid2taxid: Option<String>,
 
     #[arg()]
     /// Directory with FASTA file targets of the reference database
@@ -75,16 +75,16 @@ fn main() {
     let total_kmers = compute_total_kmers(kmer_len, None);
     let total_len_allowed = (total_kmers as f64 * MAX_PROB).round() as usize;
 
-    // Get the accession2taxid, if one was provided
-    let accession2taxid: Option<HashMap<String, usize>> = match args.accession2taxid {
+    // Get the seqid2taxid, if one was provided
+    let seqid2taxid: Option<HashMap<String, usize>> = match args.seqid2taxid {
         None => {
-            warn!("no accession2taxid was provided - setting all tax ids to 0");
+            warn!("no seqid2taxid was provided - setting all tax ids to 0");
             warn!("please be sure this is intentional");
             None
         }
-        Some(accession2taxid) => {
-            let accession2taxid_path = Path::new(&accession2taxid);
-            info!("reading accession2taxid at {}", accession2taxid);
+        Some(seqid2taxid) => {
+            let accession2taxid_path = Path::new(&seqid2taxid);
+            info!("reading seqid2taxid at {}", seqid2taxid);
             Some(HashMap::from_iter(
                 load_string2taxid(accession2taxid_path).into_iter(),
             ))
@@ -112,7 +112,7 @@ fn main() {
 
             // Get the tax id of the file based on the first record
             let taxid = get_taxid(
-                &accession2taxid,
+                &seqid2taxid,
                 records
                     .get(0)
                     .expect(&*format!("no records found in fasta file {:?}", file))
@@ -186,5 +186,5 @@ fn main() {
 
     output_writer.flush().unwrap();
 
-    info!("done");
+    info!("done!");
 }

@@ -43,7 +43,7 @@ impl Database {
         syncmer_info: Option<(usize, usize)>,
     ) -> Self {
         let total_kmers = compute_total_kmers(kmer_len, syncmer_info);
-        info!("{} total possible k-mers", total_kmers);
+        debug!("{} total possible k-mers", total_kmers);
 
         // Calculate probability of success (p) for each file with a debug logging step in
         // the middle

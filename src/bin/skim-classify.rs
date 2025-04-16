@@ -29,8 +29,9 @@ struct Args {
     /// If a directory is provided, 'skim.r2f' will be the file name.
     output_location: String,
 
-    #[arg(short, long, default_value_t = 100)]
-    // The number of trials to use in the binomial function
+    #[arg(short, long, default_value_t = 100, verbatim_doc_comment)]
+    /// The number of trials to use in the binomial function.
+    /// It is not recommended that you change this number.
     trial_number: usize,
 
     #[arg()]
