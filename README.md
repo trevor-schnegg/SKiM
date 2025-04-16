@@ -89,7 +89,7 @@ If using the NCBI taxonomy, the seqid2taxid files are known as accession2taxid f
 
 In reference to the provided [index construction steps](#index-construction), the only inputs technically required for running step 4 is **any** file2taxid (.f2t) and its corresponding FASTA file directory. This introduces two options:
 
-1. Skip steps 2 and 3 in index construction entirely. In this case, the resulting database will be **far** from its minimum possible size and from its maximum possible throughput. However, will perform the same classification-wise and the total index preparation time and resources would be reduced.
+1. Skip steps 2 and 3 in index construction entirely. In this case, the resulting database will be **far** from its minimum possible size and from its maximum possible throughput. However, it will perform the same classification-wise and the total index preparation time and resources would be reduced.
 
 2. Skip steps 2 and 3, but create a custom ordering for the file2taxid. For example, assuming that a seqid2taxid was provided in step 1, the file2taxid could be sorted by taxid using the linux `sort` command. In theory, at least the FASTA files with the same tax id will end up next to each other in the file. This benefits the way that SKiM performs compression, and it is likely to provide at least some benefits over the semi-random ordering obtained from step 1. Again, the database is still likely to be far from its minimum possbible size and maximum possible throughput. But, it will perform the same classification-wise and the total index preparation time and resources would be reduced.
 
