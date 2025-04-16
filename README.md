@@ -4,7 +4,7 @@ SKiM (Short K-mers in Metagenomics) is a metagenomic classifier implemented in R
 
 ## Requirements
 
- * Rust/Cargo version 1.79.0 or higher (see [rust-lang.org](www.rust-lang.org/tools/install))
+ * Rust/Cargo version 1.79.0 or higher (see [rust-lang.org](https://www.rust-lang.org/tools/install))
  * Currently, SKiM has only been tested on Linux - although it may work for other operating systems with Rust appropriately installed
 
 
@@ -83,7 +83,7 @@ The output for each binary is placed in `database/` within the `example/` direct
 
 #### Getting a Seqid2taxid
 
-If using the NCBI taxonomy, the seqid2taxid files are known as accession2taxid files and can be downloaded from NCBI's [ftp site](ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/) (specifically the `nucl_*.accession2taxid.*` files). However, these files are likely to contain a significant number of accessions that are not in your custom database. **Still need to fill what to do about this.**
+If using the NCBI taxonomy, the seqid2taxid files are known as accession2taxid files and can be downloaded from NCBI's [ftp site](https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/) (specifically the `nucl_*.accession2taxid.*` files). However, these files are likely to contain a significant number of accessions that are not in your custom database. **Still need to fill what to do about this.**
 
 #### Other Construction Methods
 
