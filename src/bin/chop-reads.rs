@@ -6,7 +6,7 @@ use skim::utility::{get_fasta_iter_of_file, get_fastq_iter_of_file};
 use std::path::Path;
 use tracing::info;
 
-/// Creates a run length encoding database
+/// Chop the input reads to the desired length
 #[derive(Parser)]
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
@@ -64,7 +64,7 @@ fn main() {
             let (seq, qual) = if read.seq().len() < chop_length {
                 (read.seq(), read.qual())
             } else {
-                (&read.seq()[..args.length], &read.qual()[..chop_length])
+                (&read.seq()[..chop_length], &read.qual()[..chop_length])
             };
             writer.write(read.id(), read.desc(), seq, qual).unwrap();
         }
