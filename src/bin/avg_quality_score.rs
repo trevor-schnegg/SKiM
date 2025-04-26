@@ -1,8 +1,7 @@
-use bio::io::{fasta, fastq};
 use clap::Parser;
 use skim::io::create_output_file;
 use skim::tracing::start_skim_tracing_subscriber;
-use skim::utility::{get_fasta_iter_of_file, get_fastq_iter_of_file};
+use skim::utility::get_fastq_iter_of_file;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 use tracing::info;
@@ -35,6 +34,8 @@ fn main() {
     let mut output_writer = BufWriter::new(create_output_file(output_loc_path, "r2avg_qscore"));
 
     let mut fastq_reads_iter = get_fastq_iter_of_file(reads_path);
+
+    info!("looping through reads at {:?}", reads_path);
 
     while let Some(Ok(read)) = fastq_reads_iter.next() {
         let total_qscores = read.qual().len() as f64;
