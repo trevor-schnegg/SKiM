@@ -4,7 +4,7 @@ use skim::tracing::start_skim_tracing_subscriber;
 use skim::utility::get_fastq_iter_of_file;
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use tracing::info;
+use tracing::{info, warn};
 
 /// Writes the average quality score for each read to the output
 #[derive(Parser)]
@@ -33,19 +33,41 @@ fn main() {
 
     let mut output_writer = BufWriter::new(create_output_file(output_loc_path, "r2avg_qscore"));
 
-    let mut fastq_reads_iter = get_fastq_iter_of_file(reads_path);
+    let fastq_reads_iter = get_fastq_iter_of_file(reads_path);
 
     info!("looping through reads at {:?}", reads_path);
 
-    while let Some(Ok(read)) = fastq_reads_iter.next() {
-        let total_qscores = read.qual().len() as f64;
-        let sum_qscores = read
-            .qual()
-            .iter()
-            .map(|qscore| *qscore as usize)
-            .sum::<usize>() as f64;
+    let avg_qscore_per_read = fastq_reads_iter
+        .into_iter()
+        .filter_map(|record_result| match record_result {
+            Ok(read) => {
+                let total_qscores = read.qual().len() as f64;
+                let sum_qscores = read
+                    .qual()
+                    .iter()
+                    .map(|qscore| *qscore as usize)
+                    .sum::<usize>() as f64;
+                Some((read.id().to_string(), sum_qscores / total_qscores))
+            }
+            Err(e) => {
+                warn!("error encountered: {:?} - skipping...", e);
+                None
+            }
+        })
+        .collect::<Vec<(String, f64)>>();
+
+    let sum_avg_qscore = avg_qscore_per_read
+        .iter()
+        .map(|(_, qscore)| *qscore)
+        .sum::<f64>();
+    info!(
+        "average quality score: {}",
+        sum_avg_qscore / avg_qscore_per_read.len() as f64
+    );
+
+    for (readid, avg_qscore) in avg_qscore_per_read {
         output_writer
-            .write(format!("{}\t{}\n", read.id(), sum_qscores / total_qscores).as_bytes())
+            .write(format!("{}\t{}\n", readid, avg_qscore).as_bytes())
             .expect("could not write to output file");
     }
 
