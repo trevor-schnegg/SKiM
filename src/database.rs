@@ -124,9 +124,9 @@ impl Database {
         }
     }
 
-    pub fn compute_loookup_table(&self, n_max: u64) -> Vec<BigExpFloat> {
+    pub fn compute_loookup_table(&self, n_fixed: u64) -> Vec<BigExpFloat> {
         // Including 0 hits, there are n_max + 1 total possible values for the number of hits
-        let possible_hit_numbers = (n_max + 1) as usize;
+        let possible_hit_numbers = (n_fixed + 1) as usize;
 
         let mut lookup_table = vec![BigExpFloat::zero(); self.num_files() * possible_hit_numbers];
         lookup_table
@@ -138,14 +138,14 @@ impl Database {
                     (index % possible_hit_numbers) as u64,
                 );
                 let p = self.p_values[file_num];
-                let prob_f64 = Binomial::new(p, n_max).unwrap().sf(x);
+                let prob_f64 = Binomial::new(p, n_fixed).unwrap().sf(x);
 
                 // If the probability is greater than 0.0, use it
                 let prob_big_exp = if prob_f64 > 0.0 {
                     BigExpFloat::from_f64(prob_f64)
                 } else {
                     // Otherwise, compute the probability using big exp
-                    sf(p, n_max, x, &self.consts)
+                    sf(p, n_fixed, x, &self.consts)
                 };
 
                 *placeholder_float = prob_big_exp;
@@ -387,7 +387,7 @@ impl Database {
         &self,
         read: &[u8],
         cutoff_threshold: BigExpFloat,
-        n_max: usize,
+        n_fixed: usize,
         lookup_table: &Vec<BigExpFloat>,
     ) -> (Option<(&str, usize)>, (f64, f64)) {
         // Create a vector to store the hits
@@ -435,10 +435,10 @@ impl Database {
                 // Only find the probability if the p-value is going to be < 0.5
                 if *n_hits > (n_total * p) {
                     // Adjust the number of hits (x) based on n_max
-                    let x = (*n_hits * n_max as f64 / n_total).round() as usize;
+                    let x = (*n_hits * n_fixed as f64 / n_total).round() as usize;
 
                     //Lookup the probability
-                    let lookup_position = (index * (n_max + 1)) + x;
+                    let lookup_position = (index * (n_fixed + 1)) + x;
                     Some((index, lookup_table[lookup_position]))
                 } else {
                     // The p-value will be greater than 0.5 (insignificant)
