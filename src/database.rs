@@ -423,6 +423,13 @@ impl Database {
         }
         let hit_lookup_time = hit_lookup_start.elapsed().as_secs_f64();
 
+        // Adjust the cutoff threshold if less than n_fixed queries were performed
+        let adjusted_cutoff_threshold = if n_total < n_fixed as f64 {
+            cutoff_threshold * BigExpFloat::from_f64(n_fixed as f64 / n_total as f64)
+        } else {
+            cutoff_threshold
+        };
+
         // Classify the hits
         // Would do this using min_by_key but the Ord trait is difficult to implement for float types
         let prob_calc_start = Instant::now();
@@ -452,7 +459,7 @@ impl Database {
         // Handle the return values
         match lowest_option {
             Some((lowest_prob_index, lowest_prob)) => {
-                if lowest_prob < cutoff_threshold {
+                if lowest_prob < adjusted_cutoff_threshold {
                     (
                         Some((
                             &*self.files[lowest_prob_index],
