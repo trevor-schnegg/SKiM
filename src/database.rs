@@ -423,9 +423,9 @@ impl Database {
         }
         let hit_lookup_time = hit_lookup_start.elapsed().as_secs_f64();
 
-        // Adjust the cutoff threshold if less than n_fixed queries were performed
-        let adjusted_cutoff_threshold = if n_total < n_fixed as f64 {
-            cutoff_threshold.powf(n_fixed as f64 / n_total as f64)
+        // Adjust the cutoff threshold if less than (n_fixed * 2) queries were performed
+        let adjusted_cutoff_threshold = if n_total < n_fixed as f64 * 2.0 {
+            cutoff_threshold.powf(((n_fixed as f64 * 2.0) / n_total).log2() + 1.0)
         } else {
             cutoff_threshold
         };
