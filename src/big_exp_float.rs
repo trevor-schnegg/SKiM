@@ -14,6 +14,22 @@ pub struct BigExpFloat {
 }
 
 impl BigExpFloat {
+    fn get_exp(&self) -> i32 {
+        self.exp
+    }
+
+    fn get_float(&self) -> f32 {
+        self.float
+    }
+
+    fn set_exp(&mut self, e: i32) -> () {
+        self.exp = e;
+    }
+
+    fn _set_float(&mut self, f: f32) -> () {
+        self.float = f;
+    }
+
     pub fn from_f32(f: f32) -> Self {
         let (zeroed_exp_f, exp) = decode_f32(f);
         BigExpFloat {
@@ -30,7 +46,7 @@ impl BigExpFloat {
         }
     }
 
-    pub fn ln(&self) -> Self {
+    pub fn ln(self) -> Self {
         let (zeroed_exp_f, exp) = decode_f32(self.float.ln() + (self.exp as f32 * LN_2));
         BigExpFloat {
             float: zeroed_exp_f,
@@ -38,7 +54,7 @@ impl BigExpFloat {
         }
     }
 
-    pub fn exp(&self) -> Self {
+    pub fn exp(self) -> Self {
         let base = BigExpFloat::from_f32(self.float.exp());
         if self.exp.is_positive() {
             let mut acc = base;
@@ -57,7 +73,7 @@ impl BigExpFloat {
         }
     }
 
-    pub fn sqrt(&self) -> Self {
+    pub fn sqrt(self) -> Self {
         if self.exp % 2 == 0 {
             let (zeroed_exp_f, exp) = decode_f32(self.float.sqrt());
             let exp = (self.exp / 2) + exp;
@@ -75,8 +91,24 @@ impl BigExpFloat {
         }
     }
 
-    pub fn square(&self) -> Self {
-        *self * *self
+    pub fn square(self) -> Self {
+        self * self
+    }
+
+    pub fn powf(self, f: f64) -> Self {
+        // calculate the float term
+        let mut float = BigExpFloat::from_f64((self.get_float() as f64).powf(f));
+
+        // calculate the exponent to add
+        let exponent_to_add = f * self.get_exp() as f64;
+        let exponent_int = exponent_to_add.trunc() as i32;
+        let exponent_frac = exponent_to_add.fract();
+
+        // add the proper exponent
+        float.set_exp(float.get_exp() + exponent_int);
+
+        // multiply by the leftover 2^{frac}
+        float * BigExpFloat::from_f64(2.0_f64.powf(exponent_frac))
     }
 
     pub fn as_f64(&self) -> f64 {

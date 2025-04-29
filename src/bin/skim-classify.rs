@@ -19,9 +19,9 @@ use tracing::{debug, info, warn};
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
     #[arg(short, long, default_value_t = 9, verbatim_doc_comment)]
-    /// The exponent 'e' used in the equation 10^{-e}.
+    /// The exponent, e, used in the equation 10^{-e}.
     /// Any calculated p-value below 10^{-e} will result in a classification.
-    exp_cutoff: i32,
+    exponent: i32,
 
     #[arg(short, long, default_value_t = 100, verbatim_doc_comment)]
     /// The fixed number of trials to use in the binomial function.
@@ -48,7 +48,7 @@ fn main() {
 
     // Parse arguments from the command line
     let args = Args::parse();
-    let cutoff_threshold = BigExpFloat::from_f64(10.0_f64.powi((args.exp_cutoff).neg()));
+    let cutoff_threshold = BigExpFloat::from_f64(10.0_f64.powi(args.exponent.neg()));
     let database_path = Path::new(&args.database);
     let output_loc_path = Path::new(&args.output_location);
     let reads_path = Path::new(&args.reads);
@@ -68,8 +68,8 @@ fn main() {
     let lookup_table = database.compute_loookup_table(args.n_fixed as u64);
 
     info!(
-        "classifying reads with cutoff threshold {}...",
-        10.0_f64.powi((args.exp_cutoff).neg())
+        "classifying reads with maximum cutoff threshold {}...",
+        10.0_f64.powi(args.exponent.neg())
     );
     let read_iter = get_fastq_iter_of_file(reads_path);
     let start_time = Instant::now();

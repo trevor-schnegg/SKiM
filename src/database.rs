@@ -425,7 +425,7 @@ impl Database {
 
         // Adjust the cutoff threshold if less than n_fixed queries were performed
         let adjusted_cutoff_threshold = if n_total < n_fixed as f64 {
-            cutoff_threshold * BigExpFloat::from_f64(n_fixed as f64 / n_total as f64)
+            cutoff_threshold.powf(n_fixed as f64 / n_total as f64)
         } else {
             cutoff_threshold
         };
