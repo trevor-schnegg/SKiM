@@ -31,6 +31,18 @@ pub struct Database {
 }
 
 impl Database {
+    pub fn update_taxid(&mut self, file: String, taxid: usize) -> () {
+        let index = self
+            .files
+            .iter()
+            .position(|db_file| db_file.as_str() == file.as_str())
+            .expect("could not find the input file in the database");
+
+        assert_ne!(self.tax_ids[index], taxid);
+
+        self.tax_ids[index] = taxid;
+    }
+
     pub fn num_files(&self) -> usize {
         self.files.len()
     }
