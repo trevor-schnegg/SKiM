@@ -403,10 +403,10 @@ impl Database {
         lookup_table: &Vec<BigExpFloat>,
     ) -> (Option<(&str, usize)>, (f64, f64)) {
         // Create a vector to store the hits
-        let mut num_hits = vec![0.0; self.num_files()];
+        let mut num_hits = vec![0_usize; self.num_files()];
 
         // Create a variable to track the total number of kmers queried
-        let mut n_total = 0.0;
+        let mut n_total = 0_usize;
 
         let hit_lookup_start = Instant::now();
         // For each kmer in the read
@@ -419,28 +419,21 @@ impl Database {
                     |block_iter| match block_iter {
                         BlockIter::BitIter((bit_iter, start_i)) => {
                             bit_iter.map(|i| i + start_i).for_each(|i| {
-                                num_hits[i] += 1.0;
+                                num_hits[i] += 1;
                             });
                         }
                         BlockIter::Range((start_i, end_i)) => {
                             num_hits[start_i..end_i].iter_mut().for_each(|count| {
-                                *count += 1.0;
+                                *count += 1;
                             });
                         }
                     },
                 );
             }
             // Increment the total number of queries
-            n_total += 1.0;
+            n_total += 1;
         }
         let hit_lookup_time = hit_lookup_start.elapsed().as_secs_f64();
-
-        // Adjust the cutoff threshold if less than (n_fixed * 2) queries were performed
-        let adjusted_cutoff_threshold = if n_total < n_fixed as f64 * 2.0 {
-            cutoff_threshold.powf(((n_fixed as f64 * 2.0) / n_total).log2() + 1.0)
-        } else {
-            cutoff_threshold
-        };
 
         // Classify the hits
         // Would do this using min_by_key but the Ord trait is difficult to implement for float types
@@ -449,12 +442,17 @@ impl Database {
             .iter()
             .zip(self.p_values.iter())
             .enumerate()
-            .filter_map(|(index, (n_hits, p))| {
+            .filter_map(|(index, (x_observed, p))| {
                 // This check tries to save runtime in practice
                 // Only find the probability if the p-value is going to be < 0.5
-                if *n_hits > (n_total * p) {
-                    // Adjust the number of hits (x) based on n_max
-                    let x = (*n_hits * n_fixed as f64 / n_total).round() as usize;
+                if *x_observed as f64 > (n_total as f64 * p) {
+                    let x = if n_total > n_fixed {
+                        // If the total number of queries is > n_fixed, adjust x based on the expected value
+                        (*x_observed as f64 * n_fixed as f64 / n_total as f64).round() as usize
+                    } else {
+                        // Otherwise, just use x_observed
+                        *x_observed
+                    };
 
                     //Lookup the probability
                     let lookup_position = (index * (n_fixed + 1)) + x;
@@ -471,7 +469,7 @@ impl Database {
         // Handle the return values
         match lowest_option {
             Some((lowest_prob_index, lowest_prob)) => {
-                if lowest_prob < adjusted_cutoff_threshold {
+                if lowest_prob < cutoff_threshold {
                     (
                         Some((
                             &*self.files[lowest_prob_index],

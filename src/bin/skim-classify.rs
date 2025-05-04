@@ -18,7 +18,7 @@ use tracing::{debug, info, warn};
 #[clap(version, about)]
 #[clap(author = "Trevor S. <trevor.schneggenburger@gmail.com>")]
 struct Args {
-    #[arg(short, long, default_value_t = 9, verbatim_doc_comment)]
+    #[arg(short, long, default_value_t = 12, verbatim_doc_comment)]
     /// The exponent, e, used in the equation 10^{-e}.
     /// Any calculated p-value below 10^{-e} will result in a classification.
     exponent: i32,
